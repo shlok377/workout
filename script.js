@@ -143,43 +143,88 @@ function checkAllDone() {
 }
 
 async function shareProgress() {
-    const captureArea = document.getElementById('capture-area');
     const shareBtn = document.getElementById('share-btn');
-    
-    // Visual feedback on button
-    shareBtn.innerText = "Generating Image... ⏳";
+    shareBtn.innerText = "Generating Sticker... ⏳";
     shareBtn.disabled = true;
 
     // Small delay to ensure all bouncy animations (like the share button appearing) are settled
     setTimeout(async () => {
         try {
-            // Use html2canvas to capture the UI
-            const canvas = await html2canvas(captureArea, {
-                backgroundColor: "#e0e5ec", // Match bg-color
-                scale: 2, // Higher quality
-                logging: false,
-                useCORS: true,
-                // Ensure it ignores things tagged with the ignore attribute
-                ignoreElements: (el) => el.hasAttribute('data-html2canvas-ignore')
+            // Calculate current streak (consecutive days including today)
+            let streak = 0;
+            const tempDate = new Date();
+            while (true) {
+                const dateStr = `${tempDate.getFullYear()}-${String(tempDate.getMonth() + 1).padStart(2, '0')}-${String(tempDate.getDate()).padStart(2, '0')}`;
+                if (activity[dateStr] && activity[dateStr] > 0) {
+                    streak++;
+                    tempDate.setDate(tempDate.getDate() - 1);
+                } else {
+                    break;
+                }
+            }
+
+            // Create an off-screen canvas (1080x1920 is standard story ratio)
+            const canvas = document.createElement('canvas');
+            canvas.width = 1080;
+            canvas.height = 1920;
+            const ctx = canvas.getContext('2d');
+
+            // 1. Transparent background
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // 2. Setup styles
+            ctx.textAlign = 'center';
+            ctx.shadowColor = 'rgba(0,0,0,0.6)';
+            ctx.shadowBlur = 30;
+            ctx.shadowOffsetX = 5;
+            ctx.shadowOffsetY = 5;
+
+            // 3. Draw Header
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 75px Nunito, sans-serif'; // Shrunk from 90px
+            ctx.fillText('WORKOUT COMPLETE! 🔥', canvas.width / 2, 400);
+
+            // 4. Draw Streak
+            ctx.font = 'bold 110px Nunito, sans-serif'; // Shrunk from 130px
+            ctx.fillStyle = '#6c5ce7'; // Primary color
+            ctx.fillText(`${streak} DAY STREAK`, canvas.width / 2, 550);
+
+            // 5. Draw Routine List
+            ctx.textAlign = 'left';
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 70px Nunito, sans-serif';
+            ctx.fillText('Routine Highlights:', 150, 800);
+
+            ctx.font = '55px Nunito, sans-serif';
+            let startY = 930;
+            exercises.forEach((ex, index) => {
+                if (index < 12) { // Slightly more space now
+                    const text = `✅ ${ex.name} (${ex.sets}×${ex.reps})`;
+                    ctx.fillText(text, 150, startY + (index * 90));
+                }
             });
 
+            // Convert to Blob and Share
             canvas.toBlob(async (blob) => {
-                const file = new File([blob], "workout-progress.png", { type: "image/png" });
+                if (!blob) throw new Error("Canvas to Blob failed");
+                const file = new File([blob], "workout-sticker.png", { type: "image/png" });
                 
-                // Check if Web Share API is available and supports files
                 if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    await navigator.share({
-                        files: [file],
-                        title: 'My Workout Progress',
-                        text: 'Check out my workout streak today! 🔥'
-                    });
+                    try {
+                        await navigator.share({
+                            files: [file],
+                            title: 'My Workout Progress',
+                            text: `Just crushed my workout streak today! 🔥 #WorkoutTracker #Streak`
+                        });
+                    } catch (shareErr) {
+                        console.log("Share cancelled or failed:", shareErr);
+                    }
                 } else {
-                    // Fallback: Download the image
                     const link = document.createElement('a');
-                    link.download = 'my-workout-progress.png';
+                    link.download = 'workout-sticker.png';
                     link.href = canvas.toDataURL("image/png");
                     link.click();
-                    alert("Sharing not supported on this browser. Image downloaded instead! 📸");
+                    alert("Sharing not supported. Your transparent sticker was downloaded! 📸");
                 }
                 
                 shareBtn.innerText = "Share Progress 📸";
@@ -190,8 +235,9 @@ async function shareProgress() {
             console.error("Error generating image:", err);
             shareBtn.innerText = "Error! Try Again ❌";
             shareBtn.disabled = false;
+            alert("Failed to generate your sticker. Please try again.");
         }
-    }, 600); // 600ms delay to let the bouncy "Share" button and "Add Section" settle
+    }, 800); 
 }
 
 function openEditModal(id) {
