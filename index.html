@@ -1,451 +1,88 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr">
-  <head>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=sms" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
-
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-
-    <link href="https://fonts.googleapis.com/css2?family=Oswald&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Lato&display=swap" rel="stylesheet">
-    <script src="https://kit.fontawesome.com/a076d05399.js"></script>
-    <meta charset="utf-8">  
-    <title>To-Do</title>
-    <link rel="stylesheet" href="style.css">
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="https://unicons.iconscout.com/release/v4.0.0/css/line.css">
-    <link rel="stylesheet" href="https://unicons.iconscout.com/release/v4.0.8/css/line.css">
+    <title>Workout Tracker | Neumorphic</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body>
+    <div class="container" id="capture-area">
+        <header>
+            <h1 class="neu-text">Workout Tracker</h1>
+        </header>
 
-    <style>
-      .scale-divs-container {
-        z-index: -10;
-        position: absolute;
-        width: 0px;  /* Width of the container */
-        height: 0px;  /* Height of the container */
-        /*margin-top: 30px;*/
-      }
-
-      .scale-div {
-        z-index: -10;
-        position: absolute;  /* Position absolutely within the container */
-        width: 200vw;
-        height: 0vw;
-        background-color: rgb(255, 255, 255, 0.1);
-        transition:  all 3s ease;
-        /*transform: scale(0);  /* Start with scale 0 */
-        transform-origin: 0px 50px;  /* Ensures scaling starts from the top-left corner */
-        top: -20px;
-        /*border-radius: 50%;*/
-        /*left: -20%;*/
-        
-      }
-
-      /* Colors for each theme */
-      .nature-theme .scale-div:nth-child(1) { background-color: #304530; }
-      .scarlet-theme .scale-div:nth-child(2) { background-color: #370617; }
-      .water-theme .scale-div:nth-child(3) { background-color: #325db3; }
-      .cave-theme .scale-div:nth-child(4) { background-color: #252422; }
-      .obsidian-theme .scale-div:nth-child(5) { background-color: #22223B; }
-
-      /* Active scaling for the selected div */
-      .scale-div.active {
-        /*transform: scale(1);  /* Scale the selected div up */
-        /*border-radius: 0px;*/
-        /*transition-delay: border-radius 10s;*/
-        width: 200vw;
-        height: 200vw;
-      }
-
-    </style>
-  </head>
-
-  <body onbeforeunload="return refreshing()">
-
-    <script>
-    function refreshing() {/*
-      localStorage.setItem("milliseconds", ms);
-      localStorage.setItem("seconds", sec);
-      localStorage.setItem("minutes", min);
-      localStorage.setItem("hours", hr);*/
-    }
-    </script>
-
-
-<!-- KanBan -->
-    <div id="kbn_open" class="material-symbols-outlined">view_kanban</div>
-    <div id="kbn_close" class="material-symbols-outlined">arrow_menu_close</div>
-    <div class="kbn_board" id="kbn_board">
-      <div class="kbn_column" id="kbn_todo">
-        <h2>To Do</h2>
-        <div class="tasks" id="kbn_todo-tasks"></div>
-        <input type="text" class="kbn_task-input" id="kbn_todo-input" placeholder="Add a task">
-        <div class="kbn_add-task" onclick="addTask('kbn_todo')">Add Task</div>
-      </div>
-      <div class="kbn_column" id="kbn_in-progress">
-        <h2>Doing</h2>
-        <div class="tasks" id="kbn_in-progress-tasks"></div>
-        <input type="text" class="kbn_task-input" id="kbn_in-progress-input" placeholder="Add a task">
-        <div class="kbn_add-task" onclick="addTask('kbn_in-progress')">Add Task</div>
-      </div>
-      <div class="kbn_column" id="kbn_done">
-        <h2>Done</h2>
-        <div class="tasks" id="kbn_done-tasks"></div>
-        <input type="text" class="kbn_task-input" id="kbn_done-input" placeholder="Add a task">
-        <div class="kbn_add-task" onclick="addTask('kbn_done')">Add Task</div>
-      </div>
-    </div>
-
-    <div id="kbn_context-menu" class="kbn_context-menu">
-      <ul>
-        <li onclick="kbn_editTask()">Edit</li>
-        <li onclick="kbn_deleteTask()">Delete</li>
-      </ul>
-    </div>
-
-
-
-
-
-
-
-
-<!-- Calendar -->
-    <div id="close_cal">
-      <span class="material-symbols-outlined" id="close_cal_ID">close</span>
-    </div>
-    <div class="toggle_cal" id="toggle_cal">
-      <span class="material-symbols-outlined" id="open_cal">calendar_add_on</span>
-    </div>
-    <div class="cal_container" id="cal_container">
-      <div class="left">
-        <div class="calendar">
-          <div class="month">
-            <i class="fa fa-angle-left prev" style="font-size:32px"></i>
-            <div class="date">december 2015</div>
-            <i class="fa fa-angle-right next" style="font-size:32px"></i>
-          </div>
-          <div class="weekdays">
-            <div>Sun</div>
-            <div>Mon</div>
-            <div>Tue</div>  
-            <div>Wed</div>
-            <div>Thu</div>
-            <div>Fri</div>
-            <div>Sat</div>
-          </div>
-          <div class="days"></div>
-          <div class="goto-today">
-            <div class="goto">
-              <input type="text" placeholder="mm/yyyy" class="date-input" />
-              <button class="goto-btn">Go</button>
+        <section id="grid-section" class="neu-card">
+            <h2 class="section-title">Activity Streak</h2>
+            <div id="grid-wrapper">
+                <div id="streak-grid" class="grid"></div>
             </div>
-            <button class="today-btn">Today</button>
-          </div>
-        </div>
-      </div>
-      <div class="right">
-        <div class="today-date">
-          <div class="event-day">wed</div>
-          <div class="event-date">12th december 2022</div>
-        </div>
-        <div class="events"></div>
-        <div class="add-event-wrapper">
-          <div class="add-event-header">
-            <div class="title">Task</div>
-            <span class="material-symbols-outlined"></span>
-          </div>
-          <div class="add-event-body">
-            <div class="add-event-input">
-              <input type="text" placeholder="Title" class="event-name" />
+            <div class="legend">
+                <span>Less</span>
+                <div class="cell level-0"></div>
+                <div class="cell level-1"></div>
+                <div class="cell level-2"></div>
+                <div class="cell level-3"></div>
+                <div class="cell level-4"></div>
+                <span>More</span>
             </div>
-            <div class="add-event-input">
-              <input
-                type="text"
-                placeholder="Starting Time: (In 24hr Format)"
-                class="event-time-from"
-              />
+        </section>
+
+        <section id="add-exercise-section" class="neu-card">
+            <form id="exercise-form">
+                <div class="neu-input-wrapper">
+                    <input type="text" id="exercise-name" placeholder="Exercise Name" required>
+                </div>
+                <div class="input-row">
+                    <div class="neu-input-wrapper">
+                        <input type="number" id="sets" placeholder="Sets" min="1" required>
+                    </div>
+                    <div class="neu-input-wrapper">
+                        <input type="number" id="reps" placeholder="Reps" min="1" required>
+                    </div>
+                </div>
+                <button type="submit" class="neu-btn primary">Add Exercise</button>
+            </form>
+        </section>
+
+        <section id="list-section" class="neu-card">
+            <h2 class="section-title">Today's Routine</h2>
+            <ul id="exercise-list"></ul>
+        </section>
+
+        <div id="share-container">
+            <button id="share-btn" class="neu-btn primary" onclick="shareProgress()">
+                Share Progress 📸
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal for editing -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content neu-card">
+            <h3>Edit Exercise</h3>
+            <div class="neu-input-wrapper">
+                <input type="text" id="edit-name" placeholder="Exercise Name">
             </div>
-            <div class="add-event-input">
-              <input
-                type="text"
-                placeholder="Ending  Time: (In 24hr Format)"
-                class="event-time-to"
-              />
+            <div class="input-row">
+                <div class="neu-input-wrapper">
+                    <input type="number" id="edit-sets" placeholder="Sets" min="1">
+                </div>
+                <div class="neu-input-wrapper">
+                    <input type="number" id="edit-reps" placeholder="Reps" min="1">
+                </div>
             </div>
-          </div>
-          <div class="add-event-footer">
-            <button class="add-event-btn">Done</button>
-          </div>
+            <div class="modal-buttons">
+                <button id="save-edit" class="neu-btn primary">Save</button>
+                <button id="cancel-edit" class="neu-btn secondary">Cancel</button>
+            </div>
         </div>
-      </div>
-      <button class="add-event"><span class="material-symbols-outlined">playlist_add</span>
-      </button>
     </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
-    <!--THEMES-->
-    <input type="checkbox" id="active1">
-    <label for="active1" class="menu-btn"><span></span></label>
-    <label for="active1" class="close"></label>
-    <div class="wrapper3">
-      <ul>
-        <li><a id="lightID" class="light"><i class="uil uil-trees"></i>  Nature</a></li>
-        <li><a id="charcoalID" class="charcoal"><i class="uil uil-mountains"></i>  Cave</a></li>
-        <li><a id="scarletID" class="scarlet"><i class="uil uil-spade"></i>  Scarlet</a></li>
-        <li><a id="azureID" class="azure"><i class="uil uil-raindrops-alt"></i>  Water</a></li>
-        <li><a id="obsidianID" class="obsidian"><i class="uil uil-cloud-moon"></i>  Deep</a></li>
-      </ul>
-    </div>
-
-    <div class="scale-divs-container">
-      <div class="scale-div"></div>
-      <div class="scale-div"></div>
-      <div class="scale-div"></div>
-      <div class="scale-div"></div>
-      <div class="scale-div"></div>
-    </div>
-
-    <script>
-
-      changeTheme("nature-theme", 1);  /*CURRENT THEME*/
-
-      var btn1 = document.getElementById("lightID");
-      btn1.onclick = function() {
-        changeTheme("nature-theme", 1);
-      }
-
-      var btn2 = document.getElementById("scarletID");
-      btn2.onclick = function() {
-        changeTheme("scarlet-theme", 2);
-      }
-
-      var btn5 = document.getElementById("charcoalID");
-      btn5.onclick = function() {
-        changeTheme("cave-theme", 4);
-      }
-
-      var btn4 = document.getElementById("obsidianID");
-      btn4.onclick = function() {
-        changeTheme("obsidian-theme", 5);
-      }
-
-      var btn3 = document.getElementById("azureID");
-      btn3.onclick = function() {
-        changeTheme("water-theme", 3);
-      }
-
-      // Function to change theme and scale the divs
-      function changeTheme(theme, divIndex) {
-        document.body.classList.remove("nature-theme", "scarlet-theme", "cave-theme", "obsidian-theme", "water-theme");
-        document.body.classList.add(theme);
-
-        // Reset all divs to scale(0)
-        var divs = document.querySelectorAll(".scale-div");
-        divs.forEach(function(div) {
-          div.classList.remove("active");
-        });
-
-        // Scale up the selected div
-        divs[divIndex - 1].classList.add("active");
-      }
-    </script>
-
-
-
-
-
-
-        <!--CLOCK-->
-
-    <div id="clock_clock" class="clock_clock">8:10:45</div>
-    <script>// Calling showTime function at every second
-      setInterval(showTime, 1000);
-
-      // Defining showTime funcion
-      function showTime() {
-          // Getting current time and date
-          let time = new Date();
-          let hour = time.getHours();
-          let min = time.getMinutes();
-          let sec = time.getSeconds();
-          am_pm = "";
-
-          // Setting time for 12 Hrs format
-          if (hour >= 12) {
-              if (hour > 12) hour -= 12;
-              am_pm = "";
-          } else if (hour == 0) {
-              hr = 12;
-              am_pm = "";
-          }
-
-          hour =
-              hour < 10 ? "0" + hour : hour;
-          min = min < 10 ? "0" + min : min;
-          sec = sec < 10 ? "0" + sec : sec;
-
-          let currentTime =
-              hour +
-              ":" +
-              min +
-              ":" +
-              sec +
-              am_pm;
-
-          // Displaying the time
-          document.getElementById(
-              "clock_clock"
-          ).innerHTML = currentTime;
-      }
-
-      showTime();
-    </script>
-
-
-
-
-
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-
-
-
-
-
-
-        <!--TIMER-->
-
-    <div class="wrapper1">
-      <div class="time">
-        <h3 id="displayTimeID">00 : 00 : 00</h3>
-        <!--<span class="hour" id="hourID">00</span> 
-        <span class="colon">:</span>
-        <span class="minute" id="minuteID">00</span>
-        <span class="colon">:</span>
-        <span class="second" id="secondID">00</span>
-        <span class="colon ms-colon">:</span>
-        <span class="millisecond" id="millisecondID">00</span>-->
-      </div>
-      <div class="buttons">
-        <button onclick="watchstart()" id="start_btn" class="start"><i class="uil uil-play"></i></button>
-        <button onclick="watchStop()" class="stop"><i class="uil uil-square-shape"></i></button>
-        <button onclick="watchReset()" class="reset"><i class="uil uil-redo"></i></button>
-      </div>
-    </div>
-      
-    <script>
-      let [sw_seconds, sw_minutes, sw_hours] = [0, 0, 0];
-      let displayTime = document.getElementById("displayTimeID");
-      let sw_timer = null;
-
-      // Retrieve the stored time from local storage or default to "00 : 00 : 00"
-      const storedTime = localStorage.getItem("study_time") || "00 : 00 : 00";
-      displayTime.innerHTML = storedTime;
-
-      // Parse the stored time into hours, minutes, and seconds if present
-      const [storedHours, storedMinutes, storedSeconds] = storedTime.split(" : ").map(Number);
-      [sw_hours, sw_minutes, sw_seconds] = [storedHours, storedMinutes, storedSeconds];
-
-      const startBtn = document.querySelector(".start"),
-        stopBtn = document.querySelector(".stop"),
-        resetBtn = document.querySelector(".reset");
-
-      function updateDisplay() {
-        const sw_h = sw_hours < 10 ? "0" + sw_hours : sw_hours;
-        const sw_m = sw_minutes < 10 ? "0" + sw_minutes : sw_minutes;
-        const sw_s = sw_seconds < 10 ? "0" + sw_seconds : sw_seconds;
-        displayTime.innerHTML = `${sw_h} : ${sw_m} : ${sw_s}`;
-      }
-
-      function stopwatch() {
-        sw_seconds++;
-        if (sw_seconds === 60) {
-          sw_seconds = 0;
-          sw_minutes++;
-          if (sw_minutes === 60) {
-            sw_minutes = 0;
-            sw_hours++;
-          }
-        }
-        updateDisplay();
-      }
-
-      function watchstart() {
-        if (sw_timer !== null) {
-          clearInterval(sw_timer); // Prevent multiple intervals
-        }
-        startBtn.classList.add("active");
-        stopBtn.classList.remove("stopActive");
-        sw_timer = setInterval(stopwatch, 1000);
-      }
-
-      function watchStop() {
-        if (sw_timer !== null) {
-          clearInterval(sw_timer);
-          sw_timer = null;
-        }
-        startBtn.classList.remove("active");
-        stopBtn.classList.add("stopActive");
-        localStorage.setItem("study_time", displayTime.innerHTML);
-      }
-
-      function watchReset() {
-        clearInterval(sw_timer);
-        sw_timer = null;
-        [sw_seconds, sw_minutes, sw_hours] = [0, 0, 0];
-        updateDisplay();
-        startBtn.classList.remove("active");
-        stopBtn.classList.remove("stopActive");
-        localStorage.setItem("study_time", "00 : 00 : 00");
-      }
-
-      // Event listeners
-      startBtn.addEventListener("click", watchstart);
-      stopBtn.addEventListener("click", watchStop);
-      resetBtn.addEventListener("click", watchReset);
-
-      // Update the display on page load
-      updateDisplay();
-
-    </script>
-
-
-
-        <!--TODO-->
-    <section class="main" id="main">
-      <div class="wrapper" id="wrapper"> 
-        <div class="task-input">
-          <input type="text" placeholder="Add  Tasks">
-        </div>
-        <div class="controls">
-          <div class="filters">
-            <span class="active" id="all"><i class="uil uil-clipboard-blank"></i> All  Tasks</span>
-            <span id="pending"><i class="uil uil-clock"></i> Pending</span>
-            <span id="completed"><i class="uil uil-check"></i> Completed</span>
-          </div>
-          <button class="clear-btn">
-            <i class="uil uil-trash"></i> Clear All</button>
-          
-        </div>
-        <ul class="task-box"></ul>
-     </section>
 
     <script src="script.js"></script>
-
-
-
-
-    <p id="hiddenTxt" ></p>
-    <p id="hiddenTxt2"></p>
-  </body>
+</body>
 </html>
