@@ -150,43 +150,48 @@ async function shareProgress() {
     shareBtn.innerText = "Generating Image... ⏳";
     shareBtn.disabled = true;
 
-    try {
-        // Use html2canvas to capture the UI
-        const canvas = await html2canvas(captureArea, {
-            backgroundColor: "#e0e5ec", // Match bg-color
-            scale: 2, // Higher quality
-            logging: false,
-            useCORS: true
-        });
+    // Small delay to ensure all bouncy animations (like the share button appearing) are settled
+    setTimeout(async () => {
+        try {
+            // Use html2canvas to capture the UI
+            const canvas = await html2canvas(captureArea, {
+                backgroundColor: "#e0e5ec", // Match bg-color
+                scale: 2, // Higher quality
+                logging: false,
+                useCORS: true,
+                // Ensure it ignores things tagged with the ignore attribute
+                ignoreElements: (el) => el.hasAttribute('data-html2canvas-ignore')
+            });
 
-        canvas.toBlob(async (blob) => {
-            const file = new File([blob], "workout-progress.png", { type: "image/png" });
-            
-            // Check if Web Share API is available and supports files
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                await navigator.share({
-                    files: [file],
-                    title: 'My Workout Progress',
-                    text: 'Check out my workout streak today! 🔥'
-                });
-            } else {
-                // Fallback: Download the image
-                const link = document.createElement('a');
-                link.download = 'my-workout-progress.png';
-                link.href = canvas.toDataURL("image/png");
-                link.click();
-                alert("Sharing not supported on this browser. Image downloaded instead! 📸");
-            }
-            
-            shareBtn.innerText = "Share Progress 📸";
+            canvas.toBlob(async (blob) => {
+                const file = new File([blob], "workout-progress.png", { type: "image/png" });
+                
+                // Check if Web Share API is available and supports files
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        files: [file],
+                        title: 'My Workout Progress',
+                        text: 'Check out my workout streak today! 🔥'
+                    });
+                } else {
+                    // Fallback: Download the image
+                    const link = document.createElement('a');
+                    link.download = 'my-workout-progress.png';
+                    link.href = canvas.toDataURL("image/png");
+                    link.click();
+                    alert("Sharing not supported on this browser. Image downloaded instead! 📸");
+                }
+                
+                shareBtn.innerText = "Share Progress 📸";
+                shareBtn.disabled = false;
+            }, 'image/png');
+
+        } catch (err) {
+            console.error("Error generating image:", err);
+            shareBtn.innerText = "Error! Try Again ❌";
             shareBtn.disabled = false;
-        }, 'image/png');
-
-    } catch (err) {
-        console.error("Error generating image:", err);
-        shareBtn.innerText = "Error! Try Again ❌";
-        shareBtn.disabled = false;
-    }
+        }
+    }, 600); // 600ms delay to let the bouncy "Share" button and "Add Section" settle
 }
 
 function openEditModal(id) {
