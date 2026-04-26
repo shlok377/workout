@@ -14,6 +14,7 @@
     <div class="container" id="capture-area">
         <header>
             <h1 class="neu-text">Workout Tracker</h1>
+            <button id="theme-toggle" class="theme-toggle-btn" title="Toggle Theme">🌙</button>
         </header>
 
         <section id="grid-section" class="neu-card">
@@ -30,6 +31,11 @@
                 <div class="cell level-4"></div>
                 <span>More</span>
             </div>
+        </section>
+
+        <section id="chart-section" class="neu-card">
+            <h2 class="section-title">Volume Trend (7 Days)</h2>
+            <div id="volume-chart" class="chart-container"></div>
         </section>
 
         <section id="add-exercise-section" class="neu-card">
@@ -82,6 +88,16 @@
             </div>
         </div>
     </div>
+
+    <div id="rest-timer-overlay" onclick="stopTimer()" data-html2canvas-ignore>
+        <svg class="timer-circle-svg" width="80" height="80">
+            <circle class="timer-circle-bg" cx="40" cy="40" r="36"></circle>
+            <circle id="timer-progress" class="timer-circle-progress" cx="40" cy="40" r="36"></circle>
+        </svg>
+        <span id="timer-display" class="timer-text">60</span>
+    </div>
+
+    <canvas id="confetti-canvas"></canvas>
 
     <script src="script.js"></script>
 </body>

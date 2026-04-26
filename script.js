@@ -1,9 +1,12 @@
 // State Management
 let exercises = JSON.parse(localStorage.getItem('exercises')) || [];
 let activity = JSON.parse(localStorage.getItem('activity')) || {};
+let theme = localStorage.getItem('theme') || 'light';
 let currentEditId = null;
 let lastAddedId = null;
 let victoryTimeout = null;
+let timerInterval = null;
+let audioCtx = null;
 
 // DOM Elements
 const exerciseForm = document.getElementById('exercise-form');
@@ -15,15 +18,77 @@ const editSetsInput = document.getElementById('edit-sets');
 const editRepsInput = document.getElementById('edit-reps');
 const saveEditBtn = document.getElementById('save-edit');
 const cancelEditBtn = document.getElementById('cancel-edit');
+const themeToggleBtn = document.getElementById('theme-toggle');
 
 // Initialize
 function init() {
+    document.documentElement.setAttribute('data-theme', theme);
+    themeToggleBtn.innerText = theme === 'light' ? '🌙' : '☀️';
+    
     renderExercises();
     generateGrid(true); // true for initial staggered animation
+    renderVolumeChart();
     
     // Auto-scroll to the today cell after slower animations
     setTimeout(scrollToToday, 1500);
 }
+
+// Tactile Feedback (Audio & Haptics)
+function initAudio() {
+    if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+}
+
+function playTactileClick(type = 'soft') {
+    initAudio();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(type === 'soft' ? 150 : 250, audioCtx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(10, audioCtx.currentTime + 0.1);
+    
+    gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+    
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    
+    osc.start();
+    osc.stop(audioCtx.currentTime + 0.1);
+
+    if (navigator.vibrate) {
+        navigator.vibrate(type === 'soft' ? 10 : 25);
+    }
+}
+
+function playSuccessChime() {
+    initAudio();
+    const now = audioCtx.currentTime;
+    [440, 554, 659].forEach((freq, i) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.frequency.setValueAtTime(freq, now + i * 0.1);
+        gain.gain.setValueAtTime(0.05, now + i * 0.1);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.1 + 0.3);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start(now + i * 0.1);
+        osc.stop(now + i * 0.1 + 0.3);
+    });
+}
+
+// Theme Toggling
+themeToggleBtn.addEventListener('click', () => {
+    theme = theme === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', theme);
+    themeToggleBtn.innerText = theme === 'light' ? '🌙' : '☀️';
+    localStorage.setItem('theme', theme);
+    playTactileClick('hard');
+});
 
 // Data Persistence
 function saveData() {
@@ -34,6 +99,7 @@ function saveData() {
 // Exercise Operations
 exerciseForm.addEventListener('submit', (e) => {
     e.preventDefault();
+    playTactileClick('hard');
     const nameInput = document.getElementById('exercise-name');
     const setsInput = document.getElementById('sets');
     const repsInput = document.getElementById('reps');
@@ -58,6 +124,7 @@ exerciseForm.addEventListener('submit', (e) => {
 });
 
 function deleteExercise(id) {
+    playTactileClick('soft');
     const item = document.getElementById(`exercise-${id}`);
     if (item) {
         item.classList.add('removing');
@@ -65,11 +132,13 @@ function deleteExercise(id) {
             exercises = exercises.filter(ex => ex.id !== id);
             saveData();
             renderExercises();
+            renderVolumeChart();
         }, 600); 
     } else {
         exercises = exercises.filter(ex => ex.id !== id);
         saveData();
         renderExercises();
+        renderVolumeChart();
     }
 }
 
@@ -78,19 +147,25 @@ function toggleExercise(id) {
     const today = getTodayString();
     const previousActivity = activity[today] || 0;
     
+    playTactileClick(exercise.completed ? 'soft' : 'hard');
+
     if (!exercise.completed) {
         exercise.completed = true;
         activity[today] = previousActivity + (exercise.sets * exercise.reps);
+        startTimer();
     } else {
         exercise.completed = false;
         activity[today] = Math.max(0, previousActivity - (exercise.sets * exercise.reps));
+        stopTimer();
     }
     
     saveData();
     updateExerciseDOM(id);
     
-    // Update grid
+    // Update grid & Chart
     generateGrid(false);
+    renderVolumeChart();
+
     if (activity[today] > previousActivity) {
         pulseTodayGridCell();
     }
@@ -123,23 +198,150 @@ function checkAllDone() {
     const shareContainer = document.getElementById('share-container');
     
     if (allDone) {
+        if (!addSection.classList.contains('screenshot-hide')) {
+            triggerConfetti();
+            playSuccessChime();
+        }
         addSection.classList.add('screenshot-hide');
         shareContainer.classList.add('show');
         
-        // Clear existing timeout if user unchecks/rechecks quickly
         if (victoryTimeout) clearTimeout(victoryTimeout);
         
         victoryTimeout = setTimeout(() => {
-            // Only bring back if still all done
             if (exercises.length > 0 && exercises.every(ex => ex.completed)) {
                 addSection.classList.remove('screenshot-hide');
                 shareContainer.classList.remove('show');
             }
-        }, 20000); // Increased to 20 seconds
+        }, 20000);
     } else {
         addSection.classList.remove('screenshot-hide');
         shareContainer.classList.remove('show');
     }
+}
+
+// Volume Chart Rendering
+function renderVolumeChart() {
+    const container = document.getElementById('volume-chart');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    const last7Days = [];
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        last7Days.push({
+            date: dateStr,
+            label: d.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0),
+            volume: activity[dateStr] || 0
+        });
+    }
+
+    const maxVolume = Math.max(...last7Days.map(d => d.volume), 100);
+
+    last7Days.forEach(day => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'chart-bar-wrapper';
+        
+        const heightPercent = (day.volume / maxVolume) * 100;
+        const bar = document.createElement('div');
+        bar.className = 'chart-bar';
+        bar.style.height = '0%';
+        bar.title = `${day.date}: ${day.volume} reps`;
+        
+        const label = document.createElement('div');
+        label.className = 'chart-label';
+        label.innerText = day.label;
+        
+        wrapper.appendChild(bar);
+        wrapper.appendChild(label);
+        container.appendChild(wrapper);
+        
+        setTimeout(() => {
+            bar.style.height = `${Math.max(heightPercent, 5)}%`;
+        }, 100);
+    });
+}
+
+// Rest Timer Logic
+function startTimer() {
+    const overlay = document.getElementById('rest-timer-overlay');
+    const display = document.getElementById('timer-display');
+    const progress = document.getElementById('timer-progress');
+    
+    let timeLeft = 60;
+    const totalTime = 60;
+    
+    stopTimer();
+    overlay.style.display = 'flex';
+    display.innerText = timeLeft;
+    
+    timerInterval = setInterval(() => {
+        timeLeft--;
+        display.innerText = timeLeft;
+        
+        const offset = 226 - (timeLeft / totalTime) * 226;
+        progress.style.strokeDashoffset = offset;
+        
+        if (timeLeft <= 0) {
+            stopTimer();
+            playSuccessChime();
+        }
+    }, 1000);
+}
+
+function stopTimer() {
+    clearInterval(timerInterval);
+    const overlay = document.getElementById('rest-timer-overlay');
+    if (overlay) overlay.style.display = 'none';
+    const progress = document.getElementById('timer-progress');
+    if (progress) progress.style.strokeDashoffset = 0;
+}
+
+// Confetti Animation
+function triggerConfetti() {
+    const canvas = document.getElementById('confetti-canvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    let particles = [];
+    const colors = ['#6c5ce7', '#a29bfe', '#fab1a0', '#ff7675', '#fd79a8'];
+
+    for (let i = 0; i < 150; i++) {
+        particles.push({
+            x: Math.random() * canvas.width,
+            y: canvas.height + Math.random() * 100,
+            radius: Math.random() * 5 + 2,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            vx: Math.random() * 4 - 2,
+            vy: -Math.random() * 15 - 10,
+            gravity: 0.3
+        });
+    }
+
+    function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        let alive = false;
+        
+        particles.forEach(p => {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += p.gravity;
+            
+            if (p.y < canvas.height) {
+                alive = true;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = p.color;
+                ctx.fill();
+            }
+        });
+
+        if (alive) requestAnimationFrame(animate);
+    }
+    animate();
 }
 
 async function shareProgress() {
@@ -241,6 +443,7 @@ async function shareProgress() {
 }
 
 function openEditModal(id) {
+    playTactileClick('soft');
     const exercise = exercises.find(ex => ex.id === id);
     currentEditId = id;
     editNameInput.value = exercise.name;
@@ -250,6 +453,7 @@ function openEditModal(id) {
 }
 
 saveEditBtn.addEventListener('click', () => {
+    playTactileClick('hard');
     const exercise = exercises.find(ex => ex.id === currentEditId);
     exercise.name = editNameInput.value;
     exercise.sets = parseInt(editSetsInput.value);
@@ -257,10 +461,12 @@ saveEditBtn.addEventListener('click', () => {
     
     saveData();
     renderExercises();
+    renderVolumeChart();
     editModal.classList.remove('show');
 });
 
 cancelEditBtn.addEventListener('click', () => {
+    playTactileClick('soft');
     editModal.classList.remove('show');
 });
 
@@ -363,5 +569,6 @@ window.toggleExercise = toggleExercise;
 window.openEditModal = openEditModal;
 window.deleteExercise = deleteExercise;
 window.shareProgress = shareProgress;
+window.stopTimer = stopTimer;
 
 init();
