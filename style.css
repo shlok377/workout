@@ -86,20 +86,189 @@ body {
 
 .screens-container {
     display: flex;
-    width: 200%;
+    width: 300%;
     transition: transform 0.8s var(--spring);
     align-items: flex-start;
 }
 
 .screen {
-    width: 50%;
+    width: 33.333%;
     transition: opacity 0.6s ease;
     padding: 10px 1.5rem 120px 1.5rem; /* Extra bottom padding for floating dock */
     box-sizing: border-box;
-    transition:transform 0.5s var(--spring);
+    transition: transform 0.5s var(--spring);
 }
 
-/* Date Picker Styles */
+/* Standardized Gesture Items (Exercises & Templates) */
+.exercise-item, .template-item {
+    position: relative;
+    overflow: hidden;
+    padding: 0;
+    background: transparent;
+    box-shadow: none;
+    margin-bottom: 1.2rem;
+    border-radius: 15px;
+}
+
+.exercise-content, .template-content {
+    padding: 1.2rem;
+    background-color: var(--bg-color);
+    border-radius: 15px;
+    display: flex;
+    align-items: center;
+    position: relative;
+    z-index: 2;
+    box-shadow: 4px 4px 8px var(--neu-shadow-dark), -4px -4px 8px var(--neu-shadow-light);
+    transition: transform 0.4s var(--spring);
+    user-select: none;
+    width: 100%;
+}
+
+.done-state .exercise-content {
+    box-shadow: inset 4px 4px 8px var(--neu-inset-dark), inset -4px -4px 8px var(--neu-inset-light);
+}
+
+.template-content {
+    cursor: pointer;
+}
+
+.template-content:active {
+    transform: scale(0.98);
+}
+
+/* Template Preview Styles */
+.template-preview {
+    max-height: 0;
+    overflow: hidden;
+    transition: all 0.6s var(--spring);
+    background-color: var(--bg-color);
+    margin: 0 10px;
+    border-radius: 0 0 15px 15px;
+    box-shadow: inset 2px 2px 5px var(--neu-inset-dark), inset -2px -2px 5px var(--neu-inset-light);
+    opacity: 0;
+}
+
+.template-preview.show {
+    max-height: 500px;
+    margin-top: -10px;
+    padding: 20px 15px 15px 15px;
+    opacity: 1;
+}
+
+.preview-ex-item {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.85rem;
+    padding: 6px 0;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    color: var(--text-light);
+}
+
+.preview-ex-item:last-child {
+    border-bottom: none;
+}
+
+.preview-ex-name {
+    font-weight: 700;
+}
+
+.swipe-bg {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    padding: 0 25px;
+    border-radius: 15px;
+    z-index: 1;
+    color: white;
+    opacity: 0;
+    transition: opacity 0.3s ease, filter 0.3s ease;
+}
+
+.swipe-bg-complete {
+    background-color: var(--primary-color);
+    justify-content: flex-start;
+}
+
+.swipe-bg-delete {
+    background-color: var(--danger-color);
+    justify-content: flex-end;
+}
+
+.swipe-bg.active {
+    opacity: 1;
+}
+
+.swipe-ready .swipe-bg.active {
+    filter: brightness(1.1) saturate(1.2);
+}
+
+.swipe-ready .exercise-content {
+    filter: grayscale(0.5);
+}
+
+/* Template UI Styles */
+.template-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.2rem;
+    border-radius: 18px;
+    box-shadow: var(--btn-shadow);
+    margin-bottom: 1.2rem;
+    background-color: var(--bg-color);
+    animation: popIn 0.6s var(--spring-soft) backwards;
+}
+
+.template-info {
+    flex-grow: 1;
+}
+
+.template-name {
+    font-weight: 800;
+    font-size: 1.1rem;
+    display: block;
+    color: var(--primary-color);
+}
+
+.template-meta {
+    font-size: 0.8rem;
+    color: var(--text-light);
+    font-weight: 600;
+}
+
+.template-exercise-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 12px;
+    align-items: center;
+    animation: slideUpFade 0.4s var(--spring) backwards;
+}
+
+.template-exercise-row input {
+    padding: 10px 15px;
+    font-size: 0.9rem;
+}
+
+.load-template-card {
+    padding: 1.2rem;
+    border-radius: 15px;
+    box-shadow: var(--btn-shadow);
+    background-color: var(--bg-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: all 0.4s var(--spring);
+}
+
+.load-template-card:active {
+    box-shadow: var(--btn-active);
+    transform: scale(0.96);
+}
 .date-picker {
     display: flex;
     transition: all 0.5s var(--spring);

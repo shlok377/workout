@@ -1,12 +1,23 @@
 // State Management
 let exerciseHistory = JSON.parse(localStorage.getItem('exerciseHistory')) || {};
 let activity = JSON.parse(localStorage.getItem('activity')) || {};
+let templates = JSON.parse(localStorage.getItem('templates')) || [];
 let theme = localStorage.getItem('theme') || 'light';
 let selectedDate = getTodayString();
 let currentEditId = null;
 let lastAddedId = null;
 let timerInterval = null;
 let audioCtx = null;
+let currentEditingTemplateId = null;
+
+// Gesture State
+let touchStartX = 0;
+let touchStartY = 0;
+let isSwiping = false;
+let currentSwipeItem = null;
+let longPressTimer = null;
+const SWIPE_THRESHOLD_PAUSE = 0.35;
+const SWIPE_THRESHOLD_ACTION = 0.65;
 
 // DOM Elements
 const exerciseForm = document.getElementById('exercise-form');
@@ -22,6 +33,13 @@ const themeToggleBtn = document.getElementById('theme-toggle');
 const datePicker = document.getElementById('date-picker');
 const selectedDateLabel = document.getElementById('selected-date-label');
 
+const templateModal = document.getElementById('template-modal');
+const loadTemplateModal = document.getElementById('load-template-modal');
+const templateNameInput = document.getElementById('template-name');
+const templateExList = document.getElementById('template-exercises-list');
+const templatesListUI = document.getElementById('templates-list');
+const loadTemplatesListUI = document.getElementById('load-templates-list');
+
 // Initialize
 function init() {
     document.documentElement.setAttribute('data-theme', theme);
@@ -33,6 +51,7 @@ function init() {
     generateGrid(true);
     renderVolumeChart();
     updateQuickStats();
+    initGestures();
     
     setTimeout(scrollToToday, 1500);
 }
@@ -41,12 +60,13 @@ function init() {
 function saveData() {
     localStorage.setItem('exerciseHistory', JSON.stringify(exerciseHistory));
     localStorage.setItem('activity', JSON.stringify(activity));
+    localStorage.setItem('templates', JSON.stringify(templates));
 }
 
 function cleanupOldData() {
     const today = new Date();
     const cutoff = new Date();
-    cutoff.setDate(today.getDate() - 15);
+    cutoff.setDate(today.getDate() - 30);
     const cutoffStr = getDateString(cutoff);
     
     Object.keys(exerciseHistory).forEach(date => {
@@ -118,21 +138,26 @@ function switchScreen(screen) {
     const tabs = document.querySelectorAll('.tab-item');
     const screenStats = document.getElementById('screen-stats');
     const screenWorkout = document.getElementById('screen-workout');
+    const screenTemplates = document.getElementById('screen-templates');
     
     playTactileClick('soft');
+
+    tabs.forEach(tab => tab.classList.remove('active'));
+    [screenStats, screenWorkout, screenTemplates].forEach(s => s.classList.remove('active'));
 
     if (screen === 'stats') {
         container.style.transform = 'translateX(0%)';
         tabs[0].classList.add('active');
-        tabs[1].classList.remove('active');
         screenStats.classList.add('active');
-        screenWorkout.classList.remove('active');
-    } else {
-        container.style.transform = 'translateX(-50%)';
-        tabs[0].classList.remove('active');
+    } else if (screen === 'workout') {
+        container.style.transform = 'translateX(-33.333%)';
         tabs[1].classList.add('active');
-        screenStats.classList.remove('active');
         screenWorkout.classList.add('active');
+    } else if (screen === 'templates') {
+        container.style.transform = 'translateX(-66.666%)';
+        tabs[2].classList.add('active');
+        screenTemplates.classList.add('active');
+        renderTemplates();
     }
 }
 
@@ -140,49 +165,38 @@ function switchScreen(screen) {
 function updateQuickStats() {
     const today = getTodayString();
     
-    // 1. Current Streak
     let currentStreak = 0;
     const tempDate = new Date();
     while (true) {
-        const dateStr = `${tempDate.getFullYear()}-${String(tempDate.getMonth() + 1).padStart(2, '0')}-${String(tempDate.getDate()).padStart(2, '0')}`;
+        const dateStr = getDateString(tempDate);
         if (activity[dateStr] && activity[dateStr] > 0) {
             currentStreak++;
             tempDate.setDate(tempDate.getDate() - 1);
         } else {
-            // Check if missed only today (streak might still be active if they haven't worked out YET today)
             if (dateStr === today && currentStreak === 0) {
                 tempDate.setDate(tempDate.getDate() - 1);
-                const yesterdayStr = `${tempDate.getFullYear()}-${String(tempDate.getMonth() + 1).padStart(2, '0')}-${String(tempDate.getDate()).padStart(2, '0')}`;
+                const yesterdayStr = getDateString(tempDate);
                 if (!(activity[yesterdayStr] > 0)) break;
-                else {
-                    tempDate.setDate(tempDate.getDate() + 1); // Reset to today and continue checking from yesterday
-                    tempDate.setDate(tempDate.getDate() - 1);
-                    continue; 
-                }
+                else continue; 
             }
             break;
         }
     }
 
-    // 2. Lifetime Volume
     const lifetimeVolume = Object.values(activity).reduce((a, b) => a + b, 0);
-
-    // 3. Personal Record (Best Day)
     const prVolume = Math.max(...Object.values(activity), 0);
 
-    // 4. Daily Average (last 30 days)
     const last30Days = [];
     for (let i = 0; i < 30; i++) {
         const d = new Date();
         d.setDate(d.getDate() - i);
-        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const dateStr = getDateString(d);
         if (activity[dateStr]) last30Days.push(activity[dateStr]);
     }
     const avgVolume = last30Days.length > 0 
         ? Math.round(last30Days.reduce((a, b) => a + b, 0) / 30) 
         : 0;
 
-    // Update DOM
     document.getElementById('stat-streak').innerText = currentStreak;
     document.getElementById('stat-lifetime').innerText = lifetimeVolume.toLocaleString();
     document.getElementById('stat-pr').innerText = prVolume.toLocaleString();
@@ -237,19 +251,128 @@ function playSuccessChime() {
     });
 }
 
-// Theme Toggling
-themeToggleBtn.addEventListener('click', () => {
-    theme = theme === 'light' ? 'dark' : 'light';
-    document.documentElement.setAttribute('data-theme', theme);
-    updateThemeToggleUI();
-    localStorage.setItem('theme', theme);
-    playTactileClick('hard');
-});
+// Standardized Gesture Engine Implementation
+function initGestures() {
+    [exerciseList, templatesListUI].forEach(list => {
+        list.addEventListener('touchstart', handleTouchStart, { passive: true });
+        list.addEventListener('touchmove', handleTouchMove, { passive: false });
+        list.addEventListener('touchend', handleTouchEnd);
+    });
+}
 
-// Data Persistence
-function saveData() {
-    localStorage.setItem('exerciseHistory', JSON.stringify(exerciseHistory));
-    localStorage.setItem('activity', JSON.stringify(activity));
+function handleTouchStart(e) {
+    const item = e.target.closest('.exercise-item, .template-item');
+    if (!item) return;
+    
+    touchStartX = e.touches[0].clientX;
+    touchStartY = e.touches[0].clientY;
+    currentSwipeItem = item;
+    isSwiping = false;
+
+    item.querySelectorAll('.swipe-bg').forEach(bg => bg.classList.remove('active'));
+
+    longPressTimer = setTimeout(() => {
+        if (!isSwiping) {
+            const id = parseInt(item.id.split('-').pop());
+            if (item.classList.contains('exercise-item')) openEditModal(id);
+            else openTemplateModal(id);
+            playTactileClick('hard');
+        }
+    }, 600);
+}
+
+function handleTouchMove(e) {
+    if (!currentSwipeItem) return;
+
+    const touchX = e.touches[0].clientX;
+    const touchY = e.touches[0].clientY;
+    const deltaX = touchX - touchStartX;
+    const deltaY = touchY - touchStartY;
+
+    if (!isSwiping && Math.abs(deltaX) > 10 && Math.abs(deltaX) > Math.abs(deltaY)) {
+        isSwiping = true;
+        clearTimeout(longPressTimer);
+    }
+
+    if (isSwiping) {
+        e.preventDefault();
+        const screenWidth = window.innerWidth;
+        const progress = deltaX / screenWidth;
+        let translateX = deltaX;
+        
+        if (Math.abs(progress) > SWIPE_THRESHOLD_PAUSE && Math.abs(progress) < SWIPE_THRESHOLD_ACTION) {
+            const sign = deltaX > 0 ? 1 : -1;
+            const extra = Math.abs(deltaX) - (SWIPE_THRESHOLD_PAUSE * screenWidth);
+            translateX = sign * (SWIPE_THRESHOLD_PAUSE * screenWidth + extra * 0.25);
+        } else if (Math.abs(progress) >= SWIPE_THRESHOLD_ACTION) {
+            const sign = deltaX > 0 ? 1 : -1;
+            const baseAction = SWIPE_THRESHOLD_ACTION * screenWidth;
+            const extra = Math.abs(deltaX) - baseAction;
+            translateX = sign * (baseAction + extra * 0.1);
+        }
+
+        const content = currentSwipeItem.querySelector('.exercise-content, .template-content');
+        content.style.transform = `translateX(${translateX}px)`;
+        content.style.transition = 'none';
+
+        const bgComplete = currentSwipeItem.querySelector('.swipe-bg-complete');
+        const bgDelete = currentSwipeItem.querySelector('.swipe-bg-delete');
+
+        if (deltaX > 0) {
+            bgComplete.classList.add('active');
+            bgDelete.classList.remove('active');
+        } else {
+            bgDelete.classList.add('active');
+            bgComplete.classList.remove('active');
+        }
+
+        if (Math.abs(progress) >= SWIPE_THRESHOLD_ACTION) {
+            if (!currentSwipeItem.classList.contains('swipe-ready')) {
+                playTactileClick('hard');
+                currentSwipeItem.classList.add('swipe-ready');
+            }
+        } else {
+            currentSwipeItem.classList.remove('swipe-ready');
+        }
+    }
+}
+
+function handleTouchEnd(e) {
+    clearTimeout(longPressTimer);
+    if (!currentSwipeItem || !isSwiping) {
+        currentSwipeItem = null;
+        return;
+    }
+
+    const deltaX = e.changedTouches[0].clientX - touchStartX;
+    const screenWidth = window.innerWidth;
+    const progress = deltaX / screenWidth;
+    const id = parseInt(currentSwipeItem.id.split('-').pop());
+    const isExercise = currentSwipeItem.classList.contains('exercise-item');
+
+    const content = currentSwipeItem.querySelector('.exercise-content, .template-content');
+    content.style.transition = '';
+
+    if (progress > SWIPE_THRESHOLD_ACTION) {
+        if (isExercise) toggleExercise(id);
+        else loadTemplateIntoRoutine(id); // Standardized Swipe Right for Template
+    } else if (progress < -SWIPE_THRESHOLD_ACTION) {
+        if (isExercise) deleteExercise(id);
+        else deleteTemplate(id);
+    }
+
+    content.style.transform = '';
+    currentSwipeItem.classList.remove('swipe-ready');
+    
+    const tempItem = currentSwipeItem;
+    setTimeout(() => {
+        if (tempItem) {
+            tempItem.querySelectorAll('.swipe-bg').forEach(bg => bg.classList.remove('active'));
+        }
+    }, 400);
+
+    currentSwipeItem = null;
+    isSwiping = false;
 }
 
 // Exercise Operations
@@ -260,22 +383,15 @@ exerciseForm.addEventListener('submit', (e) => {
     const setsInput = document.getElementById('sets');
     const repsInput = document.getElementById('reps');
     
-    const name = nameInput.value;
-    const sets = parseInt(setsInput.value);
-    const reps = parseInt(repsInput.value);
-
     const newExercise = {
         id: Date.now(),
-        name,
-        sets,
-        reps,
+        name: nameInput.value,
+        sets: parseInt(setsInput.value),
+        reps: parseInt(repsInput.value),
         completed: false
     };
 
-    if (!exerciseHistory[selectedDate]) {
-        exerciseHistory[selectedDate] = [];
-    }
-
+    if (!exerciseHistory[selectedDate]) exerciseHistory[selectedDate] = [];
     lastAddedId = newExercise.id;
     exerciseHistory[selectedDate].push(newExercise);
     saveData();
@@ -326,17 +442,11 @@ function toggleExercise(id) {
     
     saveData();
     updateExerciseDOM(id);
-    
-    // Update grid, Chart, and Quick Stats
     generateGrid(false);
     renderVolumeChart();
     updateQuickStats();
 
-    if (activity[activityDate] > previousActivity) {
-        pulseTodayGridCell();
-    }
-
-    // Victory check
+    if (activity[activityDate] > previousActivity) pulseTodayGridCell();
     checkAllDone();
 }
 
@@ -346,290 +456,22 @@ function updateExerciseDOM(id) {
     const li = document.getElementById(`exercise-${id}`);
     if (li) {
         li.className = `exercise-item ${exercise.completed ? 'done-state' : ''}`;
-        const checkbox = li.querySelector('.custom-checkbox');
         const info = li.querySelector('.exercise-info');
-        
-        if (exercise.completed) {
-            checkbox.classList.add('checked');
-            info.classList.add('done');
-        } else {
-            checkbox.classList.remove('checked');
-            info.classList.remove('done');
-        }
+        if (exercise.completed) info.classList.add('done');
+        else info.classList.remove('done');
     }
 }
 
-function checkAllDone() {
-    const workout = exerciseHistory[selectedDate] || [];
-    const allDone = workout.length > 0 && workout.every(ex => ex.completed);
-    const shareContainer = document.getElementById('share-container');
-    const workoutScreen = document.getElementById('screen-workout');
-    
-    if (allDone) {
-        if (selectedDate === getTodayString() && !workoutScreen.classList.contains('victory-achieved')) {
-            triggerConfetti();
-            playSuccessChime();
-            workoutScreen.classList.add('victory-achieved');
-        }
-        shareContainer.classList.add('show');
-    } else {
-        workoutScreen.classList.remove('victory-achieved');
-        shareContainer.classList.remove('show');
-    }
-}
-
-// Volume Chart Rendering
-function renderVolumeChart() {
-    const container = document.getElementById('volume-chart');
-    if (!container) return;
-    container.innerHTML = '';
-    
-    const last7Days = [];
-    for (let i = 6; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        last7Days.push({
-            date: dateStr,
-            label: d.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0),
-            volume: activity[dateStr] || 0
-        });
-    }
-
-    const maxVolume = Math.max(...last7Days.map(d => d.volume), 100);
-
-    last7Days.forEach(day => {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'chart-bar-wrapper';
-        
-        const heightPercent = (day.volume / maxVolume) * 100;
-        const bar = document.createElement('div');
-        bar.className = 'chart-bar';
-        bar.style.height = '0%';
-        bar.title = `${day.date}: ${day.volume} reps`;
-        
-        const label = document.createElement('div');
-        label.className = 'chart-label';
-        label.innerText = day.label;
-        
-        wrapper.appendChild(bar);
-        wrapper.appendChild(label);
-        container.appendChild(wrapper);
-        
-        setTimeout(() => {
-            bar.style.height = `${Math.max(heightPercent, 5)}%`;
-        }, 100);
-    });
-}
-
-// Rest Timer Logic
-function startTimer() {
-    const overlay = document.getElementById('rest-timer-overlay');
-    const display = document.getElementById('timer-display');
-    const progress = document.getElementById('timer-progress');
-    
-    let timeLeft = 60;
-    const totalTime = 60;
-    
-    stopTimer();
-    overlay.style.display = 'flex';
-    display.innerText = timeLeft;
-    
-    timerInterval = setInterval(() => {
-        timeLeft--;
-        display.innerText = timeLeft;
-        
-        const offset = 226 - (timeLeft / totalTime) * 226;
-        progress.style.strokeDashoffset = offset;
-        
-        if (timeLeft <= 0) {
-            stopTimer();
-            playSuccessChime();
-        }
-    }, 1000);
-}
-
-function stopTimer() {
-    clearInterval(timerInterval);
-    const overlay = document.getElementById('rest-timer-overlay');
-    if (overlay) overlay.style.display = 'none';
-    const progress = document.getElementById('timer-progress');
-    if (progress) progress.style.strokeDashoffset = 0;
-}
-
-// Confetti Animation
-function triggerConfetti() {
-    const canvas = document.getElementById('confetti-canvas');
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    let particles = [];
-    const colors = ['#6c5ce7', '#a29bfe', '#fab1a0', '#ff7675', '#fd79a8'];
-
-    for (let i = 0; i < 150; i++) {
-        particles.push({
-            x: Math.random() * canvas.width,
-            y: canvas.height + Math.random() * 100,
-            radius: Math.random() * 5 + 2,
-            color: colors[Math.floor(Math.random() * colors.length)],
-            vx: Math.random() * 4 - 2,
-            vy: -Math.random() * 15 - 10,
-            gravity: 0.3
-        });
-    }
-
-    function animate() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        let alive = false;
-        
-        particles.forEach(p => {
-            p.x += p.vx;
-            p.y += p.vy;
-            p.vy += p.gravity;
-            
-            if (p.y < canvas.height) {
-                alive = true;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
-                ctx.fillStyle = p.color;
-                ctx.fill();
-            }
-        });
-
-        if (alive) requestAnimationFrame(animate);
-    }
-    animate();
-}
-
-async function shareProgress() {
-    const shareBtn = document.getElementById('share-btn');
-    const originalContent = shareBtn.innerHTML;
-    shareBtn.innerText = "Generating Sticker...";
-    shareBtn.disabled = true;
-
-    setTimeout(async () => {
-        try {
-            let streak = 0;
-            const tempDate = new Date();
-            while (true) {
-                const dateStr = getDateString(tempDate);
-                if (activity[dateStr] && activity[dateStr] > 0) {
-                    streak++;
-                    tempDate.setDate(tempDate.getDate() - 1);
-                } else {
-                    break;
-                }
-            }
-
-            const canvas = document.createElement('canvas');
-            canvas.width = 1080;
-            canvas.height = 1920;
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.textAlign = 'center';
-            ctx.shadowColor = 'rgba(0,0,0,0.6)';
-            ctx.shadowBlur = 30;
-            ctx.shadowOffsetX = 5;
-            ctx.shadowOffsetY = 5;
-
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 75px Nunito, sans-serif'; 
-            ctx.fillText('WORKOUT COMPLETE!', canvas.width / 2, 400);
-
-            ctx.font = 'bold 110px Nunito, sans-serif'; 
-            ctx.fillStyle = '#6c5ce7'; 
-            ctx.fillText(`${streak} DAY STREAK`, canvas.width / 2, 550);
-
-            ctx.textAlign = 'left';
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 70px Nunito, sans-serif';
-            ctx.fillText('Routine Highlights:', 150, 800);
-
-            ctx.font = '55px Nunito, sans-serif';
-            let startY = 930;
-            const workout = exerciseHistory[selectedDate] || [];
-            workout.forEach((ex, index) => {
-                if (index < 12) { 
-                    const text = `* ${ex.name} (${ex.sets}×${ex.reps})`;
-                    ctx.fillText(text, 150, startY + (index * 90));
-                }
-            });
-
-            canvas.toBlob(async (blob) => {
-                if (!blob) throw new Error("Canvas to Blob failed");
-                const file = new File([blob], "workout-sticker.png", { type: "image/png" });
-                
-                if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    try {
-                        await navigator.share({
-                            files: [file],
-                            title: 'My Workout Progress',
-                            text: `Just crushed my workout streak today! #WorkoutTracker #Streak`
-                        });
-                    } catch (shareErr) {
-                        console.log("Share cancelled or failed:", shareErr);
-                    }
-                } else {
-                    const link = document.createElement('a');
-                    link.download = 'workout-sticker.png';
-                    link.href = canvas.toDataURL("image/png");
-                    link.click();
-                    alert("Sharing not supported. Your transparent sticker was downloaded!");
-                }
-                
-                shareBtn.innerHTML = originalContent;
-                shareBtn.disabled = false;
-            }, 'image/png');
-
-        } catch (err) {
-            console.error("Error generating image:", err);
-            shareBtn.innerText = "Error! Try Again";
-            setTimeout(() => {
-                shareBtn.innerHTML = originalContent;
-                shareBtn.disabled = false;
-            }, 2000);
-            alert("Failed to generate your sticker. Please try again.");
-        }
-    }, 800); 
-}
-
-function openEditModal(id) {
-    playTactileClick('soft');
-    const workout = exerciseHistory[selectedDate] || [];
-    const exercise = workout.find(ex => ex.id === id);
-    currentEditId = id;
-    editNameInput.value = exercise.name;
-    editSetsInput.value = exercise.sets;
-    editRepsInput.value = exercise.reps;
-    editModal.classList.add('show');
-}
-
-saveEditBtn.addEventListener('click', () => {
-    playTactileClick('hard');
-    const workout = exerciseHistory[selectedDate] || [];
-    const exercise = workout.find(ex => ex.id === currentEditId);
-    exercise.name = editNameInput.value;
-    exercise.sets = parseInt(editSetsInput.value);
-    exercise.reps = parseInt(editRepsInput.value);
-    
-    saveData();
-    renderExercises();
-    renderVolumeChart();
-    updateQuickStats();
-    editModal.classList.remove('show');
-});
-
-cancelEditBtn.addEventListener('click', () => {
-    playTactileClick('soft');
-    editModal.classList.remove('show');
-});
-
-// UI Rendering
 function renderExercises() {
     exerciseList.innerHTML = '';
     const workout = exerciseHistory[selectedDate] || [];
+    
+    if (workout.length === 0) {
+        exerciseList.innerHTML = `<li style="text-align:center; padding: 2rem; color: var(--text-light); opacity: 0.5;">No exercises for this day</li>`;
+        checkAllDone();
+        return;
+    }
+
     workout.forEach(ex => {
         const li = document.createElement('li');
         li.id = `exercise-${ex.id}`;
@@ -637,18 +479,13 @@ function renderExercises() {
         li.className = `exercise-item ${ex.completed ? 'done-state' : ''} ${isNew ? 'new-item' : ''}`;
         
         li.innerHTML = `
-            <div class="custom-checkbox ${ex.completed ? 'checked' : ''}" onclick="toggleExercise(${ex.id})"></div>
-            <div class="exercise-info ${ex.completed ? 'done' : ''}">
-                <span class="exercise-name">${ex.name}</span>
-                <span class="exercise-details">${ex.sets} sets × ${ex.reps} reps</span>
-            </div>
-            <div class="actions">
-                <button class="btn-icon" onclick="openEditModal(${ex.id})" title="Edit">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
-                </button>
-                <button class="btn-icon btn-delete" onclick="deleteExercise(${ex.id})" title="Delete">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
-                </button>
+            <div class="swipe-bg swipe-bg-complete"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
+            <div class="swipe-bg swipe-bg-delete"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path></svg></div>
+            <div class="exercise-content">
+                <div class="exercise-info ${ex.completed ? 'done' : ''}">
+                    <span class="exercise-name">${ex.name}</span>
+                    <span class="exercise-details">${ex.sets} sets × ${ex.reps} reps</span>
+                </div>
             </div>
         `;
         exerciseList.appendChild(li);
@@ -657,63 +494,246 @@ function renderExercises() {
     checkAllDone();
 }
 
-// Activity Grid Logic
-function getTodayString() {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+// Template Management Logic
+function openTemplateModal(templateId = null) {
+    currentEditingTemplateId = templateId;
+    templateExList.innerHTML = '';
+    
+    if (templateId) {
+        const t = templates.find(temp => temp.id === templateId);
+        templateNameInput.value = t.name;
+        t.exercises.forEach(ex => addExerciseToTemplate(ex.name, ex.sets, ex.reps));
+        document.getElementById('template-modal-title').innerText = 'Edit Template';
+    } else {
+        templateNameInput.value = '';
+        addExerciseToTemplate(); 
+        document.getElementById('template-modal-title').innerText = 'Create Template';
+    }
+    
+    templateModal.classList.add('show');
+    playTactileClick('soft');
+}
+
+function closeTemplateModal() {
+    templateModal.classList.remove('show');
+}
+
+function addExerciseToTemplate(name = '', sets = '', reps = '') {
+    const row = document.createElement('div');
+    row.className = 'template-exercise-row';
+    row.innerHTML = `
+        <div class="neu-input-wrapper" style="flex: 3;">
+            <input type="text" placeholder="Exercise" value="${name}" class="t-ex-name">
+        </div>
+        <div class="neu-input-wrapper" style="flex: 1;">
+            <input type="number" placeholder="S" value="${sets}" class="t-ex-sets">
+        </div>
+        <div class="neu-input-wrapper" style="flex: 1;">
+            <input type="number" placeholder="R" value="${reps}" class="t-ex-reps">
+        </div>
+        <button class="btn-icon" onclick="this.parentElement.remove()" style="box-shadow: none; color: var(--danger-color);">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
+    `;
+    templateExList.appendChild(row);
+}
+
+function saveTemplate() {
+    const name = templateNameInput.value.trim();
+    if (!name) return alert('Please enter a template name');
+    const exRows = templateExList.querySelectorAll('.template-exercise-row');
+    const exercises = [];
+    exRows.forEach(row => {
+        const exName = row.querySelector('.t-ex-name').value.trim();
+        const exSets = parseInt(row.querySelector('.t-ex-sets').value);
+        const exReps = parseInt(row.querySelector('.t-ex-reps').value);
+        if (exName && exSets && exReps) {
+            exercises.push({ name: exName, sets: exSets, reps: exReps });
+        }
+    });
+    if (exercises.length === 0) return alert('Add at least one exercise');
+    if (currentEditingTemplateId) {
+        const index = templates.findIndex(t => t.id === currentEditingTemplateId);
+        templates[index] = { ...templates[index], name, exercises };
+    } else {
+        templates.push({ id: Date.now(), name, exercises });
+    }
+    saveData(); renderTemplates(); closeTemplateModal(); playSuccessChime();
+}
+
+function deleteTemplate(id) {
+    playTactileClick('soft');
+    templates = templates.filter(t => t.id !== id);
+    saveData();
+    renderTemplates();
+}
+
+function renderTemplates() {
+    templatesListUI.innerHTML = '';
+    if (templates.length === 0) {
+        templatesListUI.innerHTML = `<div style="text-align:center; padding: 3rem; color: var(--text-light); opacity: 0.5;">No templates created yet.</div>`;
+        return;
+    }
+
+    templates.forEach(t => {
+        const div = document.createElement('div');
+        div.className = 'template-item';
+        div.id = `template-${t.id}`;
+        div.innerHTML = `
+            <div class="swipe-bg swipe-bg-complete"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></div>
+            <div class="swipe-bg swipe-bg-delete"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path></svg></div>
+            <div class="template-content" onclick="toggleTemplatePreview(${t.id}, this)">
+                <div class="template-info">
+                    <span class="template-name">${t.name}</span>
+                    <span class="template-meta">${t.exercises.length} Exercises</span>
+                </div>
+            </div>
+            <div class="template-preview" id="preview-${t.id}"></div>
+        `;
+        templatesListUI.appendChild(div);
+    });
+}
+
+function toggleTemplatePreview(id, element) {
+    if (isSwiping) return; // Don't toggle if we were swiping
+    playTactileClick('soft');
+    const preview = document.getElementById(`preview-${id}`);
+    const isShowing = preview.classList.contains('show');
+    
+    // Close others
+    document.querySelectorAll('.template-preview.show').forEach(p => p.classList.remove('show'));
+    
+    if (!isShowing) {
+        const t = templates.find(temp => temp.id === id);
+        preview.innerHTML = t.exercises.map(ex => `
+            <div class="preview-ex-item">
+                <span class="preview-ex-name">${ex.name}</span>
+                <span class="preview-ex-details">${ex.sets}s × ${ex.reps}r</span>
+            </div>
+        `).join('');
+        preview.classList.add('show');
+    }
+}
+
+// Workout Screen Template Actions
+function saveCurrentAsTemplate() {
+    const workout = exerciseHistory[selectedDate] || [];
+    if (workout.length === 0) return alert('Nothing to save. Add some exercises first!');
+    const name = prompt('Enter a name for this template:', `Template ${new Date().toLocaleDateString()}`);
+    if (!name) return;
+    templates.push({
+        id: Date.now(),
+        name: name,
+        exercises: workout.map(ex => ({ name: ex.name, sets: ex.sets, reps: ex.reps }))
+    });
+    saveData(); playSuccessChime();
+}
+
+function openLoadTemplateModal() {
+    loadTemplatesListUI.innerHTML = '';
+    if (templates.length === 0) {
+        loadTemplatesListUI.innerHTML = `<p style="text-align:center; padding: 1rem;">No templates found.</p>`;
+    } else {
+        templates.forEach(t => {
+            const card = document.createElement('div');
+            card.className = 'load-template-card';
+            card.innerHTML = `<div><strong>${t.name}</strong><small style="display:block;color:var(--text-light);">${t.exercises.length} Exercises</small></div><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="9 18 15 12 9 6"></polyline></svg>`;
+            card.onclick = () => loadTemplateIntoRoutine(t.id);
+            loadTemplatesListUI.appendChild(card);
+        });
+    }
+    loadTemplateModal.classList.add('show');
+    playTactileClick('soft');
+}
+
+function closeLoadTemplateModal() { loadTemplateModal.classList.remove('show'); }
+
+function loadTemplateIntoRoutine(templateId) {
+    const t = templates.find(temp => temp.id === templateId);
+    if (!exerciseHistory[selectedDate]) exerciseHistory[selectedDate] = [];
+
+    // Use a timestamp based seed and increment it for each exercise to ensure uniqueness and delete-ability
+    const baseId = Date.now();
+    t.exercises.forEach((ex, index) => {
+        exerciseHistory[selectedDate].push({
+            id: baseId + index, // Sequential IDs starting from now
+            name: ex.name,
+            sets: ex.sets,
+            reps: ex.reps,
+            completed: false
+        });
+    });
+
+    saveData();
+    renderExercises();
+    closeLoadTemplateModal();
+    playSuccessChime();
+
+    // Reset swipe state if triggered via swipe
+    if (currentSwipeItem && currentSwipeItem.classList.contains('template-item')) {
+        const content = currentSwipeItem.querySelector('.template-content');
+        content.style.transform = '';
+    }
+}
+
+// Visuals & Helpers
+function checkAllDone() {
+    const workout = exerciseHistory[selectedDate] || [];
+    const allDone = workout.length > 0 && workout.every(ex => ex.completed);
+    const shareContainer = document.getElementById('share-container');
+    const workoutScreen = document.getElementById('screen-workout');
+    if (allDone) {
+        if (selectedDate === getTodayString() && !workoutScreen.classList.contains('victory-achieved')) {
+            triggerConfetti(); playSuccessChime(); workoutScreen.classList.add('victory-achieved');
+        }
+        shareContainer.classList.add('show');
+    } else {
+        workoutScreen.classList.remove('victory-achieved');
+        shareContainer.classList.remove('show');
+    }
+}
+
+function renderVolumeChart() {
+    const container = document.getElementById('volume-chart');
+    if (!container) return;
+    container.innerHTML = '';
+    const last7Days = [];
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date(); d.setDate(d.getDate() - i);
+        const dateStr = getDateString(d);
+        last7Days.push({ date: dateStr, label: d.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0), volume: activity[dateStr] || 0 });
+    }
+    const maxVolume = Math.max(...last7Days.map(d => d.volume), 100);
+    last7Days.forEach(day => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'chart-bar-wrapper';
+        const heightPercent = (day.volume / maxVolume) * 100;
+        const bar = document.createElement('div');
+        bar.className = 'chart-bar';
+        bar.style.height = '0%';
+        bar.title = `${day.date}: ${day.volume} reps`;
+        const label = document.createElement('div');
+        label.className = 'chart-label'; label.innerText = day.label;
+        wrapper.appendChild(bar); wrapper.appendChild(label); container.appendChild(wrapper);
+        setTimeout(() => { bar.style.height = `${Math.max(heightPercent, 5)}%`; }, 100);
+    });
 }
 
 function generateGrid(isInitial = false) {
     streakGrid.innerHTML = '';
     const now = new Date();
-    const year = now.getFullYear();
-    const startDate = new Date(year, 0, 1);
-    const dayOfWeek = startDate.getDay();
-    startDate.setDate(startDate.getDate() - dayOfWeek);
-
+    const startDate = new Date(now.getFullYear(), 0, 1);
+    startDate.setDate(startDate.getDate() - startDate.getDay());
     const tempDate = new Date(startDate);
-    const todayStr = getTodayString();
-    
     for (let i = 0; i < 371; i++) {
-        const dateStr = `${tempDate.getFullYear()}-${String(tempDate.getMonth() + 1).padStart(2, '0')}-${String(tempDate.getDate()).padStart(2, '0')}`;
+        const dateStr = getDateString(tempDate);
         const count = activity[dateStr] || 0;
-        
         const cell = document.createElement('div');
         cell.className = 'cell ' + getLevelClass(count);
-        cell.title = `${dateStr}: ${count} repetitions`;
-        
-        if (isInitial) {
-            cell.style.animationDelay = `${(i % 7) * 0.1 + Math.floor(i / 7) * 0.02}s`;
-        } else {
-            cell.style.animation = 'none'; 
-        }
-        
-        if (dateStr === todayStr) {
-            cell.id = 'today-cell';
-        }
-        
+        if (isInitial) cell.style.animationDelay = `${(i % 7) * 0.1 + Math.floor(i / 7) * 0.02}s`;
+        if (dateStr === getTodayString()) cell.id = 'today-cell';
         streakGrid.appendChild(cell);
         tempDate.setDate(tempDate.getDate() + 1);
-    }
-}
-
-function scrollToToday() {
-    const todayCell = document.getElementById('today-cell');
-    const gridWrapper = document.getElementById('grid-wrapper');
-    if (todayCell && gridWrapper) {
-        const wrapperRect = gridWrapper.getBoundingClientRect();
-        const cellRect = todayCell.getBoundingClientRect();
-        const scrollOffset = cellRect.left - wrapperRect.left - (wrapperRect.width / 2) + (cellRect.width / 2);
-        gridWrapper.scrollLeft += scrollOffset;
-    }
-}
-
-function pulseTodayGridCell() {
-    const todayCell = document.getElementById('today-cell');
-    if (todayCell) {
-        todayCell.classList.remove('pulse');
-        void todayCell.offsetWidth; 
-        todayCell.classList.add('pulse');
     }
 }
 
@@ -725,12 +745,135 @@ function getLevelClass(count) {
     return 'level-4';
 }
 
-// Global scope for onclick handlers
+function scrollToToday() {
+    const todayCell = document.getElementById('today-cell');
+    const gridWrapper = document.getElementById('grid-wrapper');
+    if (todayCell && gridWrapper) {
+        const rect = todayCell.getBoundingClientRect();
+        const wrapperRect = gridWrapper.getBoundingClientRect();
+        gridWrapper.scrollLeft += (rect.left - wrapperRect.left) - (wrapperRect.width / 2);
+    }
+}
+
+function pulseTodayGridCell() {
+    const cell = document.getElementById('today-cell');
+    if (cell) { cell.classList.remove('pulse'); void cell.offsetWidth; cell.classList.add('pulse'); }
+}
+
+function startTimer() {
+    const overlay = document.getElementById('rest-timer-overlay');
+    const display = document.getElementById('timer-display');
+    const progress = document.getElementById('timer-progress');
+    let timeLeft = 60;
+    stopTimer();
+    overlay.style.display = 'flex';
+    display.innerText = timeLeft;
+    timerInterval = setInterval(() => {
+        timeLeft--; display.innerText = timeLeft;
+        progress.style.strokeDashoffset = 226 - (timeLeft / 60) * 226;
+        if (timeLeft <= 0) { stopTimer(); playSuccessChime(); }
+    }, 1000);
+}
+
+function stopTimer() {
+    clearInterval(timerInterval);
+    const overlay = document.getElementById('rest-timer-overlay');
+    if (overlay) overlay.style.display = 'none';
+}
+
+function triggerConfetti() {
+    const canvas = document.getElementById('confetti-canvas');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+    let particles = [];
+    const colors = ['#6c5ce7', '#a29bfe', '#fab1a0', '#ff7675', '#fd79a8'];
+    for (let i = 0; i < 150; i++) {
+        particles.push({
+            x: Math.random() * canvas.width, y: canvas.height + 50, radius: Math.random() * 5 + 2,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            vx: Math.random() * 4 - 2, vy: -Math.random() * 15 - 10, gravity: 0.3
+        });
+    }
+    function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        let alive = false;
+        particles.forEach(p => {
+            p.x += p.vx; p.y += p.vy; p.vy += p.gravity;
+            if (p.y < canvas.height) {
+                alive = true; ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                ctx.fillStyle = p.color; ctx.fill();
+            }
+        });
+        if (alive) requestAnimationFrame(animate);
+    }
+    animate();
+}
+
+async function shareProgress() {
+    const btn = document.getElementById('share-btn');
+    btn.innerText = "Generating Sticker...";
+    btn.disabled = true;
+    setTimeout(async () => {
+        try {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1080; canvas.height = 1920;
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.textAlign = 'center'; ctx.fillStyle = '#6c5ce7';
+            ctx.font = 'bold 110px Nunito, sans-serif'; ctx.fillText('WORKOUT COMPLETE!', 540, 500);
+            const link = document.createElement('a');
+            link.download = 'workout.png'; link.href = canvas.toDataURL(); link.click();
+            btn.innerText = "Share Progress"; btn.disabled = false;
+        } catch (e) { btn.innerText = "Error!"; }
+    }, 800);
+}
+
+function openEditModal(id) {
+    const workout = exerciseHistory[selectedDate] || [];
+    const ex = workout.find(e => e.id === id);
+    currentEditId = id;
+    editNameInput.value = ex.name;
+    editSetsInput.value = ex.sets;
+    editRepsInput.value = ex.reps;
+    editModal.classList.add('show');
+}
+
+saveEditBtn.onclick = () => {
+    const workout = exerciseHistory[selectedDate] || [];
+    const ex = workout.find(e => e.id === currentEditId);
+    ex.name = editNameInput.value;
+    ex.sets = parseInt(editSetsInput.value);
+    ex.reps = parseInt(editRepsInput.value);
+    saveData(); renderExercises(); renderVolumeChart(); updateQuickStats();
+    editModal.classList.remove('show');
+    playTactileClick('hard');
+};
+
+cancelEditBtn.onclick = () => editModal.classList.remove('show');
+
+themeToggleBtn.onclick = () => {
+    theme = theme === 'light' ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', theme);
+    updateThemeToggleUI();
+    localStorage.setItem('theme', theme);
+    playTactileClick('hard');
+};
+
+// Global Exposure
+window.switchScreen = switchScreen;
 window.toggleExercise = toggleExercise;
-window.openEditModal = openEditModal;
 window.deleteExercise = deleteExercise;
+window.openEditModal = openEditModal;
+window.openTemplateModal = openTemplateModal;
+window.closeTemplateModal = closeTemplateModal;
+window.addExerciseToTemplate = addExerciseToTemplate;
+window.saveTemplate = saveTemplate;
+window.deleteTemplate = deleteTemplate;
+window.saveCurrentAsTemplate = saveCurrentAsTemplate;
+window.openLoadTemplateModal = openLoadTemplateModal;
+window.closeLoadTemplateModal = closeLoadTemplateModal;
 window.shareProgress = shareProgress;
 window.stopTimer = stopTimer;
-window.switchScreen = switchScreen;
+window.toggleTemplatePreview = toggleTemplatePreview;
 
 init();
