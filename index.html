@@ -24,19 +24,19 @@
                 <!-- Screen 1: Stats -->
                 <div id="screen-stats" class="screen active">
                     <section class="stats-grid">
-                        <div class="neu-card stat-card">
+                        <div class="neu-card stat-card" onclick="showStatInfo('streak')">
                             <span id="stat-streak" class="stat-value">0</span>
                             <span class="stat-label">Day Streak</span>
                         </div>
-                        <div class="neu-card stat-card">
+                        <div class="neu-card stat-card" onclick="showStatInfo('lifetime')">
                             <span id="stat-lifetime" class="stat-value">0</span>
                             <span class="stat-label">Total Reps</span>
                         </div>
-                        <div class="neu-card stat-card">
+                        <div class="neu-card stat-card" onclick="showStatInfo('pr')">
                             <span id="stat-pr" class="stat-value">0</span>
                             <span class="stat-label">Personal Best</span>
                         </div>
-                        <div class="neu-card stat-card">
+                        <div class="neu-card stat-card" onclick="showStatInfo('avg')">
                             <span id="stat-avg" class="stat-value">0</span>
                             <span class="stat-label">Daily Avg</span>
                         </div>
@@ -120,17 +120,17 @@
         </main>
 
         <nav class="tab-bar">
-            <button class="tab-item active" onclick="switchScreen('stats')">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-                <span>Stats</span>
+            <button class="tab-item active" onclick="switchScreen('stats')" title="Stats">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                <span class="tab-label">Stats</span>
             </button>
-            <button class="tab-item" onclick="switchScreen('workout')">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v8H2z"></path><path d="M6 12h2"></path></svg>
-                <span>Workout</span>
+            <button class="tab-item" onclick="switchScreen('workout')" title="Workout">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v8H2z"></path><path d="M6 12h2"></path></svg>
+                <span class="tab-label">Workout</span>
             </button>
-            <button class="tab-item" onclick="switchScreen('templates')">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
-                <span>Templates</span>
+            <button class="tab-item" onclick="switchScreen('templates')" title="Templates">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
+                <span class="tab-label">Templates</span>
             </button>
         </nav>
     </div>
@@ -183,6 +183,38 @@
             <div id="load-templates-list" style="max-height: 300px; overflow-y: auto; display: flex; flex-direction: column; gap: 1rem;"></div>
             <div class="modal-buttons" style="margin-top: 1.5rem;">
                 <button onclick="closeLoadTemplateModal()" class="neu-btn secondary" style="width: 100%;">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Stats Information (Bottom Sheet Style) -->
+    <div id="stat-info-modal" class="modal bottom-sheet">
+        <div class="modal-content neu-card">
+            <h3 id="stat-info-title">Stat Definition</h3>
+            <p id="stat-info-text" style="font-size: 0.95rem; color: var(--text-color); line-height: 1.6; text-align: center; margin: 1rem 0;"></p>
+            <div class="modal-buttons">
+                <button onclick="closeStatInfo()" class="neu-btn primary" style="width: 100%;">Got it</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Weekly Goal (Bottom Sheet Style) -->
+    <div id="weekly-goal-modal" class="modal bottom-sheet">
+        <div class="modal-content neu-card">
+            <h3>Weekly Consistency</h3>
+            <p style="font-size: 0.9rem; color: var(--text-light); text-align: center; margin-bottom: 1.5rem;">Set how many workouts you want to complete each week.</p>
+            
+            <div style="display: flex; align-items: center; justify-content: center; gap: 2rem; margin-bottom: 2rem;">
+                <button class="btn-icon" onclick="adjustWeeklyGoal(-1)" style="width: 50px; height: 50px; font-size: 1.5rem; font-weight: 800;">-</button>
+                <div style="text-align: center;">
+                    <span id="weekly-goal-display" style="font-size: 3rem; font-weight: 800; color: var(--primary-color); display: block; line-height: 1;">4</span>
+                    <span style="font-size: 0.7rem; font-weight: 700; color: var(--text-light); text-transform: uppercase;">Workouts</span>
+                </div>
+                <button class="btn-icon" onclick="adjustWeeklyGoal(1)" style="width: 50px; height: 50px; font-size: 1.5rem; font-weight: 800;">+</button>
+            </div>
+
+            <div class="modal-buttons">
+                <button onclick="closeWeeklyGoalModal()" class="neu-btn primary" style="width: 100%;">Done</button>
             </div>
         </div>
     </div>

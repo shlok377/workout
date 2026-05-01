@@ -18,7 +18,7 @@
     --btn-shadow: 5px 5px 10px var(--neu-shadow-dark), -5px -5px 10px var(--neu-shadow-light);
     --btn-active: inset 3px 3px 6px var(--neu-inset-dark), inset -3px -3px 6px var(--neu-inset-light);
     
-    /* Extra Bouncy & Slower Spring cubic-bezier curves */
+    /* Consolidated Refined Animations */
     --spring: cubic-bezier(0.175, 0.885, 0.32, 1.5);
     --spring-soft: cubic-bezier(0.34, 1.8, 0.64, 1);
     
@@ -133,7 +133,7 @@ body {
 }
 
 .template-content:active {
-    transform: scale(0.98);
+    transform: scale(0.92);
 }
 
 /* Template Preview Styles */
@@ -158,18 +158,33 @@ body {
 .preview-ex-item {
     display: flex;
     justify-content: space-between;
-    font-size: 0.85rem;
-    padding: 6px 0;
-    border-bottom: 1px solid rgba(0,0,0,0.05);
-    color: var(--text-light);
+    align-items: center;
+    font-size: 0.9rem;
+    padding: 12px 15px;
+    margin-bottom: 10px;
+    border-radius: 12px;
+    background-color: var(--bg-color);
+    box-shadow: inset 3px 3px 6px var(--neu-inset-dark), inset -3px -3px 6px var(--neu-inset-light);
+    color: var(--text-color);
 }
 
 .preview-ex-item:last-child {
-    border-bottom: none;
+    margin-bottom: 0;
 }
 
 .preview-ex-name {
     font-weight: 700;
+    color: var(--text-color);
+}
+
+.preview-ex-details {
+    background-color: var(--bg-color);
+    color: var(--primary-color);
+    padding: 4px 10px;
+    border-radius: 8px;
+    font-weight: 800;
+    font-size: 0.75rem;
+    box-shadow: 2px 2px 4px var(--neu-shadow-dark), -2px -2px 4px var(--neu-shadow-light);
 }
 
 .swipe-bg {
@@ -213,14 +228,23 @@ body {
 /* Template UI Styles */
 .template-item {
     display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1.2rem;
-    border-radius: 18px;
-    box-shadow: var(--btn-shadow);
+    flex-direction: column;
+    align-items: stretch;
     margin-bottom: 1.2rem;
-    background-color: var(--bg-color);
+    position: relative;
     animation: popIn 0.6s var(--spring-soft) backwards;
+    overflow: visible; /* Allow preview to expand */
+}
+
+.template-card-wrapper {
+    overflow: hidden; /* Clip swipe backgrounds */
+    border-radius: 15px;
+    box-shadow: 4px 4px 8px var(--neu-shadow-dark), -4px -4px 8px var(--neu-shadow-light);
+    background-color: var(--bg-color);
+}
+
+.template-card-wrapper .template-content {
+    box-shadow: none;
 }
 
 .template-info {
@@ -267,7 +291,7 @@ body {
 
 .load-template-card:active {
     box-shadow: var(--btn-active);
-    transform: scale(0.96);
+    transform: scale(0.92);
 }
 .date-picker {
     display: flex;
@@ -312,7 +336,7 @@ body {
 .date-item.pop-animate:nth-child(n+6) { animation-delay: 0.35s; }
 
 .date-item:active {
-    transform: scale(0.9);
+    transform: scale(0.82);
     box-shadow: var(--btn-active);
 }
 
@@ -343,20 +367,20 @@ body {
 .stats-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 1.2rem;
-    margin-bottom: 2rem;
+    gap: 0.8rem;
+    margin-bottom: 1.2rem;
 }
 
-.stat-card {
-    padding: 1.2rem;
+.screen.active .stat-card {
+    padding: 0.8rem;
     text-align: center;
     animation: popIn var(--speed-base) var(--spring-soft) backwards;
 }
 
-.stat-card:nth-child(1) { animation-delay: 0.1s; }
-.stat-card:nth-child(2) { animation-delay: 0.2s; }
-.stat-card:nth-child(3) { animation-delay: 0.3s; }
-.stat-card:nth-child(4) { animation-delay: 0.4s; }
+.screen.active .stat-card:nth-child(1) { animation-delay: 0.1s; }
+.screen.active .stat-card:nth-child(2) { animation-delay: 0.2s; }
+.screen.active .stat-card:nth-child(3) { animation-delay: 0.3s; }
+.screen.active .stat-card:nth-child(4) { animation-delay: 0.4s; }
 
 .stat-value {
     display: block;
@@ -385,35 +409,61 @@ body {
     background-color: var(--bg-color);
     border-radius: 25px;
     display: flex;
-    padding: 10px;
+    padding: 8px 10px;
     box-shadow: var(--card-shadow);
     z-index: 1500;
     animation: slideUpFade var(--speed-base) var(--spring-soft) backwards;
     animation-delay: 0.6s;
+    transition: transform 0.6s var(--spring);
+    overflow: hidden; /* Ensure progress bar stays inside */
+}
+
+.tab-bar::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: var(--dock-progress, 0%);
+    background-color: var(--primary-color);
+    opacity: 0.1; /* Very subtle progress overlay */
+    transition: width 0.8s var(--spring);
+    pointer-events: none;
+    z-index: -1;
+}
+
+.tab-bar.dock-hidden {
+    transform: translateX(-50%) translateY(120px);
 }
 
 .tab-item {
     flex: 1;
     border: none;
     background: none;
-    padding: 12px;
+    padding: 8px 5px;
     font-family: inherit;
-    font-weight: 800;
-    font-size: 0.9rem;
     color: var(--text-light);
     cursor: pointer;
     border-radius: 18px;
     transition: all 0.5s var(--spring);
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 2px;
+}
+
+.tab-label {
+    font-size: 0.6rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .tab-item.active {
     color: var(--primary-color);
     box-shadow: var(--btn-active);
-    transform: scale(0.95);
+    transform: scale(0.9);
 }
 
 header {
@@ -443,27 +493,27 @@ header {
 
 .theme-toggle-btn:active {
     box-shadow: var(--btn-active);
-    transform: scale(0.9);
+    transform: scale(0.82);
 }
 
-#grid-section {
+.screen.active #grid-section {
     animation: slideUpFade var(--speed-base) var(--spring-soft) backwards;
     animation-delay: 0.3s;
 }
 
-#chart-section {
+.screen.active #chart-section {
     animation: slideUpFade var(--speed-base) var(--spring-soft) backwards;
     animation-delay: 0.4s;
 }
 
-#add-exercise-section {
+.screen.active #add-exercise-section {
     animation: slideUpFade var(--speed-base) var(--spring-soft) backwards;
     animation-delay: 0.5s;
     transition: all 0.8s var(--spring);
     overflow: hidden;
 }
 
-#list-section {
+.screen.active #list-section {
     animation: slideUpFade var(--speed-base) var(--spring-soft) backwards;
     animation-delay: 0.7s;
     
@@ -489,7 +539,7 @@ h2.section-title {
     border-radius: 20px;
     padding: 1.5rem;
     box-shadow: var(--card-shadow);
-    margin-bottom: 2rem;
+    margin-bottom: 1.2rem;
     transition: all 0.8s var(--spring);
 }
 
@@ -534,6 +584,10 @@ h2.section-title {
     border-radius: 4px;
     box-shadow: inset 2px 2px 4px var(--neu-inset-dark), inset -2px -2px 4px var(--neu-inset-light);
     transition: background-color 0.8s var(--spring), transform 0.8s var(--spring);
+}
+
+.screen.active .cell:not(.level-0) {
+    animation: cellStagger 0.4s var(--spring) backwards;
 }
 
 .cell.pulse {
@@ -582,7 +636,7 @@ input {
 
 input:focus {
     box-shadow: inset 8px 8px 12px 0 var(--neu-inset-dark), inset -8px -8px 12px 0 var(--neu-inset-light);
-    transform: scale(0.99);
+    transform: scale(0.97);
 }
 
 .input-row {
@@ -605,7 +659,7 @@ input:focus {
 
 .neu-btn:active {
     box-shadow: var(--btn-active);
-    transform: scale(0.92);
+    transform: scale(0.88);
 }
 
 .neu-btn.primary {
@@ -625,7 +679,7 @@ input:focus {
 }
 
 @keyframes popIn {
-    0% { opacity: 0; transform: scale(0.7) translateY(30px); }
+    0% { opacity: 0; transform: scale(0.4) translateY(30px); }
     100% { opacity: 1; transform: scale(1) translateY(0); }
 }
 
@@ -645,10 +699,12 @@ input:focus {
     box-shadow: 4px 4px 8px var(--neu-shadow-dark), -4px -4px 8px var(--neu-shadow-light);
     transition: all 0.6s var(--spring);
     transform-origin: center;
+    animation: popIn 0.6s var(--spring-soft) backwards;
 }
 
 .exercise-item.new-item {
     animation: popIn 0.8s var(--spring-soft) forwards;
+    /* Optional: slightly different feel for newly added vs initial load */
 }
 
 .exercise-item.removing {
@@ -658,7 +714,7 @@ input:focus {
 
 .exercise-item.done-state {
     box-shadow: inset 4px 4px 8px var(--neu-inset-dark), inset -4px -4px 8px var(--neu-inset-light);
-    transform: scale(0.97);
+    transform: scale(0.94);
 }
 
 /* Custom Checkbox Animation */
@@ -677,7 +733,7 @@ input:focus {
 }
 
 .custom-checkbox:active {
-    transform: scale(0.7);
+    transform: scale(0.55);
 }
 
 .custom-checkbox.checked {
@@ -738,7 +794,7 @@ input:focus {
 
 .btn-icon:active {
     box-shadow: var(--btn-active);
-    transform: scale(0.8);
+    transform: scale(0.7);
 }
 
 .btn-delete:hover {
@@ -803,6 +859,24 @@ input:focus {
 .modal.show .modal-content {
     transform: scale(1) translateY(0);
     opacity: 1;
+}
+
+/* Bottom Sheet Specific Styles */
+.modal.bottom-sheet {
+    align-items: flex-end;
+}
+
+.modal.bottom-sheet .modal-content {
+    width: 100%;
+    max-width: 500px;
+    border-radius: 30px 30px 0 0;
+    margin-bottom: 0;
+    transform: translateY(100%);
+    padding: 2rem 1.5rem 3rem 1.5rem;
+}
+
+.modal.bottom-sheet.show .modal-content {
+    transform: translateY(0);
 }
 
 .modal-content h3 {
@@ -909,6 +983,18 @@ input:focus {
     pointer-events: none;
     z-index: 3000;
 }
+
+/* Responsive adjustments */
+@media (max-width: 480px) {
+    body {
+        padding: 1rem;
+    }
+    
+    .neu-card {
+        padding: 1.2rem;
+    }
+}
+
 
 /* Responsive adjustments */
 @media (max-width: 480px) {
