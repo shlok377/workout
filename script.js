@@ -888,21 +888,109 @@ function triggerConfetti() {
 
 async function shareProgress() {
     const btn = document.getElementById('share-btn');
+    const originalText = btn.innerHTML;
     btn.innerText = "Generating Sticker...";
     btn.disabled = true;
+
+    // Recalculate streak for accuracy
+    const today = getTodayString();
+    let currentStreak = 0;
+    const streakTempDate = new Date();
+    while (true) {
+        const dateStr = getDateString(streakTempDate);
+        if (activity[dateStr] && activity[dateStr] > 0) {
+            currentStreak++;
+            streakTempDate.setDate(streakTempDate.getDate() - 1);
+        } else {
+            if (dateStr === today && currentStreak === 0) {
+                streakTempDate.setDate(streakTempDate.getDate() - 1);
+                const yesterdayStr = getDateString(streakTempDate);
+                if (!(activity[yesterdayStr] > 0)) break;
+                else continue; 
+            }
+            break;
+        }
+    }
+
+    // Populate Template
+    const todayFullDate = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    document.getElementById('sticker-date').innerText = todayFullDate;
+    document.getElementById('sticker-streak').innerText = currentStreak;
+    document.getElementById('sticker-volume').innerText = (activity[today] || 0).toLocaleString();
+
+    const stickerExList = document.getElementById('sticker-exercises');
+    stickerExList.innerHTML = '';
+    const workout = exerciseHistory[today] || [];
+    
+    if (workout.length === 0) {
+        stickerExList.innerHTML = '<li class="sticker-ex-item" style="justify-content:center; opacity:0.5;">No exercises logged today</li>';
+    } else {
+        workout.forEach(ex => {
+            const li = document.createElement('li');
+            li.className = 'sticker-ex-item';
+            li.innerHTML = `
+                <span class="sticker-ex-name">${ex.name}</span>
+                <span class="sticker-ex-sets">${ex.sets} × ${ex.reps}</span>
+            `;
+            stickerExList.appendChild(li);
+        });
+    }
+
+    // Capture using html2canvas
     setTimeout(async () => {
         try {
-            const canvas = document.createElement('canvas');
-            canvas.width = 1080; canvas.height = 1920;
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.textAlign = 'center'; ctx.fillStyle = '#6c5ce7';
-            ctx.font = 'bold 110px Nunito, sans-serif'; ctx.fillText('WORKOUT COMPLETE!', 540, 500);
-            const link = document.createElement('a');
-            link.download = 'workout.png'; link.href = canvas.toDataURL(); link.click();
-            btn.innerText = "Share Progress"; btn.disabled = false;
-        } catch (e) { btn.innerText = "Error!"; }
-    }, 800);
+            const template = document.getElementById('sticker-template');
+            const canvas = await html2canvas(template, {
+                backgroundColor: null,
+                scale: 2, // High resolution
+                logging: false,
+                useCORS: true
+            });
+
+            const dataUrl = canvas.toDataURL('image/png');
+            const fileName = `workout-receipt-${today}.png`;
+
+            // Try direct sharing via Web Share API
+            if (navigator.canShare && navigator.share) {
+                try {
+                    const blob = await (await fetch(dataUrl)).blob();
+                    const file = new File([blob], fileName, { type: 'image/png' });
+
+                    if (navigator.canShare({ files: [file] })) {
+                        await navigator.share({
+                            files: [file],
+                            title: 'Workout Tracker Receipt',
+                            text: 'Check out my routine today!'
+                        });
+                        // If share succeeds, we don't necessarily need to download
+                    } else {
+                        throw new Error('Share not supported for this file');
+                    }
+                } catch (shareErr) {
+                    console.warn('Direct share failed, falling back to download:', shareErr);
+                    const link = document.createElement('a');
+                    link.download = fileName;
+                    link.href = dataUrl;
+                    link.click();
+                }
+            } else {
+                // Standard fallback for desktop/unsupported browsers
+                const link = document.createElement('a');
+                link.download = fileName;
+                link.href = dataUrl;
+                link.click();
+            }
+
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            triggerConfetti();
+            playSuccessChime();
+        } catch (e) {
+            console.error('Sticker Generation Error:', e);
+            btn.innerText = "Error!";
+            setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 2000);
+        }
+    }, 100);
 }
 
 function openEditModal(id) {

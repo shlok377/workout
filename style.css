@@ -983,26 +983,147 @@ input:focus {
     pointer-events: none;
     z-index: 3000;
 }
-
 /* Responsive adjustments */
 @media (max-width: 480px) {
     body {
         padding: 1rem;
     }
-    
+
     .neu-card {
         padding: 1.2rem;
     }
 }
 
+/* Sticker Template Styling */
+.sticker-template {
+    position: fixed;
+    left: -9999px;
+    top: 0;
+    z-index: -1000;
+}
 
-/* Responsive adjustments */
-@media (max-width: 480px) {
-    body {
-        padding: 1rem;
-    }
-    
-    .neu-card {
-        padding: 1.2rem;
-    }
+.sticker-card {
+    width: 600px; /* High res capture */
+    background-color: #f8f9fa;
+    color: #2d3436;
+    padding: 40px;
+    font-family: 'Nunito', sans-serif;
+    border-radius: 4px;
+    box-shadow: 20px 20px 60px rgba(0,0,0,0.1);
+    position: relative;
+    /* Physical paper effect */
+    border-left: 2px solid rgba(0,0,0,0.05);
+}
+
+.sticker-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px dashed #dfe6e9;
+    padding-bottom: 20px;
+    margin-bottom: 30px;
+}
+
+.sticker-app-name {
+    font-weight: 900;
+    font-size: 1.2rem;
+    color: #6c5ce7;
+    letter-spacing: 2px;
+}
+
+.sticker-date {
+    font-weight: 700;
+    font-size: 1rem;
+    color: #b2bec3;
+}
+
+.sticker-main-title {
+    font-size: 3.5rem;
+    font-weight: 900;
+    text-align: center;
+    margin-bottom: 40px;
+    color: #2d3436;
+    letter-spacing: -1px;
+}
+
+.sticker-stats {
+    display: flex;
+    justify-content: space-around;
+    background-color: #ffffff;
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 10px 10px 30px rgba(0,0,0,0.03);
+    margin-bottom: 40px;
+}
+
+.sticker-stat {
+    text-align: center;
+}
+
+.sticker-stat-value {
+    display: block;
+    font-size: 2.5rem;
+    font-weight: 900;
+    color: #6c5ce7;
+}
+
+.sticker-stat-label {
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: #b2bec3;
+    letter-spacing: 1px;
+}
+
+.sticker-divider {
+    width: 2px;
+    background-color: #f1f2f6;
+}
+
+.sticker-section-label {
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: #b2bec3;
+    margin-bottom: 20px;
+    padding-left: 10px;
+    border-left: 4px solid #6c5ce7;
+}
+
+.sticker-exercises-list {
+    list-style: none;
+    padding: 0;
+    margin-bottom: 40px;
+}
+
+.sticker-ex-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 15px 10px;
+    border-bottom: 1px solid #f1f2f6;
+    font-size: 1.2rem;
+    font-weight: 700;
+}
+
+.sticker-ex-item:last-child {
+    border-bottom: none;
+}
+
+.sticker-ex-sets {
+    color: #6c5ce7;
+}
+
+.sticker-footer {
+    display: flex;
+    justify-content: center;
+    border-top: 2px dashed #dfe6e9;
+    padding-top: 30px;
+}
+
+.sticker-branding {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 900;
+    color: #b2bec3;
+    font-size: 0.8rem;
+    letter-spacing: 2px;
 }
