@@ -1060,9 +1060,7 @@ input:focus {
     background-color: var(--primary-color);
     border-radius: 8px 8px 4px 4px;
     box-shadow: var(--btn-shadow);
-    transition: height 0.8s var(--spring);
     min-height: 4px;
-    will-change: height;
 }
 
 .chart-label {
