@@ -373,11 +373,6 @@ body {
     font-weight: 800;
 }
 
-.screen:not(.active) {
-    opacity: 0.3;
-    pointer-events: none;
-}
-
 /* Quick Stats Styles */
 .stats-grid {
     display: grid;

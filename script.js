@@ -199,7 +199,7 @@ function initDockGestures() {
         // Only apply inertia if it's primarily a horizontal swipe
         if (Math.abs(deltaX) > Math.abs(deltaY)) {
             // Dampen the movement so it feels like stretching a rubber band (0.4 resistance)
-            const dampedDeltaX = deltaX * 0.1;
+            const dampedDeltaX = deltaX * 0.1;//RESISTANCE CHANGE
             tabBar.style.transform = `translateX(calc(-50% + ${dampedDeltaX}px))`;
         }
     }, { passive: true });
@@ -975,7 +975,7 @@ async function shareProgress() {
                     if (navigator.canShare({ files: [file] })) {
                         await navigator.share({
                             files: [file],
-                            title: 'Workout Tracker Receipt',
+                            title: 'FitLogr Receipt',
                             text: 'Check out my routine today!'
                         });
                         // If share succeeds, we don't necessarily need to download

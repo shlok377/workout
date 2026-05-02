@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Workout Tracker | Neumorphic</title>
+    <title>FitLogr | Neumorphic</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -13,7 +13,7 @@
 <body>
     <div class="container">
         <header>
-            <h1 class="neu-text">Workout Tracker</h1>
+            <h1 class="neu-text">FitLogr</h1>
             <button id="theme-toggle" class="theme-toggle-btn" title="Toggle Theme">
                 <svg class="icon-moon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
             </button>
@@ -73,23 +73,7 @@
 
                 <!-- Screen 2: Workout -->
                 <div id="screen-workout" class="screen">
-                    <section id="add-exercise-section" class="neu-card">
-                        <form id="exercise-form">
-                            <div class="neu-input-wrapper">
-                                <input type="text" id="exercise-name" placeholder="Exercise Name" required>
-                            </div>
-                            <div class="input-row">
-                                <div class="neu-input-wrapper">
-                                    <input type="number" id="sets" placeholder="Sets" min="1" required>
-                                </div>
-                                <div class="neu-input-wrapper">
-                                    <input type="number" id="reps" placeholder="Reps" min="1" required>
-                                </div>
-                            </div>
-                            <button type="submit" class="neu-btn primary">Add Exercise</button>
-                        </form>
-                    </section>
-
+                    
                     <section id="list-section" class="neu-card">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                             <h2 class="section-title" style="margin-bottom: 0;">Routine for <span id="selected-date-label">Today</span></h2>
@@ -105,6 +89,22 @@
                         <div id="date-picker" class="date-picker"></div>
                         <ul id="exercise-list"></ul>
                         <p class="gesture-hint" style="text-align: center; font-size: 0.75rem; color: var(--text-light); margin-top: 1rem; opacity: 0.7;">Swipe Right to Complete • Swipe Left to Delete • Long Press to Edit</p>
+                    </section>
+                    <section id="add-exercise-section" class="neu-card">
+                        <form id="exercise-form">
+                            <div class="neu-input-wrapper">
+                                <input type="text" id="exercise-name" placeholder="Exercise Name" required>
+                            </div>
+                            <div class="input-row">
+                                <div class="neu-input-wrapper">
+                                    <input type="number" id="sets" placeholder="Sets" min="1" required>
+                                </div>
+                                <div class="neu-input-wrapper">
+                                    <input type="number" id="reps" placeholder="Reps" min="1" required>
+                                </div>
+                            </div>
+                            <button type="submit" class="neu-btn primary">Add Exercise</button>
+                        </form>
                     </section>
                 </div>
 
@@ -231,7 +231,7 @@
     <div id="sticker-template" class="sticker-template">
         <div class="sticker-card">
             <div class="sticker-header">
-                <span class="sticker-app-name">WORKOUT TRACKER</span>
+                <span class="sticker-app-name">FITLOGR</span>
                 <span id="sticker-date" class="sticker-date">Monday, Oct 24</span>
             </div>
             
