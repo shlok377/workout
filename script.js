@@ -9,6 +9,7 @@ let lastAddedId = null;
 let timerInterval = null;
 let audioCtx = null;
 let currentEditingTemplateId = null;
+let weeklyGoal = parseInt(localStorage.getItem('weeklyGoal')) || 4;
 
 // Gesture State
 let touchStartX = 0;
@@ -51,16 +52,18 @@ function init() {
     generateGrid(true);
     renderVolumeChart();
     updateQuickStats();
+    updateWeeklyProgress();
     initGestures();
-    
-    setTimeout(scrollToToday, 1500);
-}
+    initDockGestures();
+
+    setTimeout(scrollToToday, 1500);}
 
 // Data Persistence
 function saveData() {
     localStorage.setItem('exerciseHistory', JSON.stringify(exerciseHistory));
     localStorage.setItem('activity', JSON.stringify(activity));
     localStorage.setItem('templates', JSON.stringify(templates));
+    localStorage.setItem('weeklyGoal', weeklyGoal);
 }
 
 function cleanupOldData() {
@@ -133,7 +136,11 @@ function updateThemeToggleUI() {
 }
 
 // Navigation Logic
+let currentScreen = 'stats';
+const screensList = ['stats', 'workout', 'templates'];
+
 function switchScreen(screen) {
+    currentScreen = screen;
     const container = document.getElementById('screens-container');
     const tabs = document.querySelectorAll('.tab-item');
     const screenStats = document.getElementById('screen-stats');
@@ -146,19 +153,90 @@ function switchScreen(screen) {
     [screenStats, screenWorkout, screenTemplates].forEach(s => s.classList.remove('active'));
 
     if (screen === 'stats') {
-        container.style.transform = 'translateX(0%)';
         tabs[0].classList.add('active');
         screenStats.classList.add('active');
+        
+        // Re-trigger animations
+        generateGrid(true);
+        renderVolumeChart();
+        updateQuickStats();
     } else if (screen === 'workout') {
-        container.style.transform = 'translateX(-33.333%)';
         tabs[1].classList.add('active');
         screenWorkout.classList.add('active');
+        
+        // Re-trigger animations
+        renderDatePicker(true);
+        renderExercises();
     } else if (screen === 'templates') {
-        container.style.transform = 'translateX(-66.666%)';
         tabs[2].classList.add('active');
         screenTemplates.classList.add('active');
+        
+        // Re-trigger animations
         renderTemplates();
     }
+}
+
+// Gesture Navigation for the Dock
+function initDockGestures() {
+    const tabBar = document.querySelector('.tab-bar');
+    let touchStartX = 0;
+    let touchStartY = 0;
+    const threshold = 50; // Minimum distance for a swipe
+
+    tabBar.addEventListener('touchstart', (e) => {
+        touchStartX = e.changedTouches[0].screenX;
+        touchStartY = e.changedTouches[0].screenY;
+        tabBar.style.transition = 'none'; // Disable transition for instant tracking
+    }, { passive: true });
+
+    tabBar.addEventListener('touchmove', (e) => {
+        const touchCurrentX = e.changedTouches[0].screenX;
+        const touchCurrentY = e.changedTouches[0].screenY;
+        
+        const deltaX = touchCurrentX - touchStartX;
+        const deltaY = touchCurrentY - touchStartY;
+        
+        // Only apply inertia if it's primarily a horizontal swipe
+        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+            // Dampen the movement so it feels like stretching a rubber band (0.4 resistance)
+            const dampedDeltaX = deltaX * 0.1;//RESISTANCE CHANGE
+            tabBar.style.transform = `translateX(calc(-50% + ${dampedDeltaX}px))`;
+        }
+    }, { passive: true });
+
+    tabBar.addEventListener('touchend', (e) => {
+        tabBar.style.transition = ''; // Re-enable CSS transition (bouncy spring)
+        tabBar.style.transform = ''; // Snap back to center
+
+        const touchEndX = e.changedTouches[0].screenX;
+        const touchEndY = e.changedTouches[0].screenY;
+        
+        const deltaX = touchEndX - touchStartX;
+        const deltaY = touchEndY - touchStartY;
+
+        // Check for Swipe Up
+        if (Math.abs(deltaY) > Math.abs(deltaX) && deltaY < -threshold) {
+            openWeeklyGoalModal();
+            return;
+        }
+
+        // Ensure the swipe is horizontal and meets the threshold
+        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > threshold) {
+            const currentIndex = screensList.indexOf(currentScreen);
+            
+            if (deltaX > 0) {
+                // Swipe Right -> Previous Screen
+                if (currentIndex > 0) {
+                    switchScreen(screensList[currentIndex - 1]);
+                }
+            } else {
+                // Swipe Left -> Next Screen
+                if (currentIndex < screensList.length - 1) {
+                    switchScreen(screensList[currentIndex + 1]);
+                }
+            }
+        }
+    }, { passive: true });
 }
 
 // Quick Stats Calculation
@@ -396,14 +474,15 @@ exerciseForm.addEventListener('submit', (e) => {
     exerciseHistory[selectedDate].push(newExercise);
     saveData();
     renderExercises();
+    updateWeeklyProgress();
     exerciseForm.reset();
-});
+    });
 
-function deleteExercise(id) {
+    function deleteExercise(id) {
     playTactileClick('soft');
     const item = document.getElementById(`exercise-${id}`);
     const workout = exerciseHistory[selectedDate] || [];
-    
+
     if (item) {
         item.classList.add('removing');
         setTimeout(() => {
@@ -412,16 +491,17 @@ function deleteExercise(id) {
             renderExercises();
             renderVolumeChart();
             updateQuickStats();
-        }, 600); 
+            updateWeeklyProgress();
+        }, 600);
     } else {
         exerciseHistory[selectedDate] = workout.filter(ex => ex.id !== id);
         saveData();
         renderExercises();
         renderVolumeChart();
         updateQuickStats();
+        updateWeeklyProgress();
     }
-}
-
+    }
 function toggleExercise(id) {
     const workout = exerciseHistory[selectedDate] || [];
     const exercise = workout.find(ex => ex.id === id);
@@ -445,6 +525,7 @@ function toggleExercise(id) {
     generateGrid(false);
     renderVolumeChart();
     updateQuickStats();
+    updateWeeklyProgress();
 
     if (activity[activityDate] > previousActivity) pulseTodayGridCell();
     checkAllDone();
@@ -472,11 +553,14 @@ function renderExercises() {
         return;
     }
 
-    workout.forEach(ex => {
+    workout.forEach((ex, index) => {
         const li = document.createElement('li');
         li.id = `exercise-${ex.id}`;
         const isNew = ex.id === lastAddedId;
         li.className = `exercise-item ${ex.completed ? 'done-state' : ''} ${isNew ? 'new-item' : ''}`;
+        
+        // Add staggered animation delay
+        li.style.animationDelay = `${index * 0.05}s`;
         
         li.innerHTML = `
             <div class="swipe-bg swipe-bg-complete"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
@@ -511,11 +595,13 @@ function openTemplateModal(templateId = null) {
     }
     
     templateModal.classList.add('show');
+    toggleDock(false);
     playTactileClick('soft');
 }
 
 function closeTemplateModal() {
     templateModal.classList.remove('show');
+    toggleDock(true);
 }
 
 function addExerciseToTemplate(name = '', sets = '', reps = '') {
@@ -575,17 +661,20 @@ function renderTemplates() {
         return;
     }
 
-    templates.forEach(t => {
+    templates.forEach((t, index) => {
         const div = document.createElement('div');
         div.className = 'template-item';
         div.id = `template-${t.id}`;
+        div.style.animationDelay = `${index * 0.05}s`;
         div.innerHTML = `
-            <div class="swipe-bg swipe-bg-complete"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></div>
-            <div class="swipe-bg swipe-bg-delete"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path></svg></div>
-            <div class="template-content" onclick="toggleTemplatePreview(${t.id}, this)">
-                <div class="template-info">
-                    <span class="template-name">${t.name}</span>
-                    <span class="template-meta">${t.exercises.length} Exercises</span>
+            <div class="template-card-wrapper" style="position: relative; width: 100%;">
+                <div class="swipe-bg swipe-bg-complete"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg></div>
+                <div class="swipe-bg swipe-bg-delete"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path></svg></div>
+                <div class="template-content" onclick="toggleTemplatePreview(${t.id}, this)">
+                    <div class="template-info">
+                        <span class="template-name">${t.name}</span>
+                        <span class="template-meta">${t.exercises.length} Exercises</span>
+                    </div>
                 </div>
             </div>
             <div class="template-preview" id="preview-${t.id}"></div>
@@ -643,10 +732,14 @@ function openLoadTemplateModal() {
         });
     }
     loadTemplateModal.classList.add('show');
+    toggleDock(false);
     playTactileClick('soft');
 }
 
-function closeLoadTemplateModal() { loadTemplateModal.classList.remove('show'); }
+function closeLoadTemplateModal() { 
+    loadTemplateModal.classList.remove('show'); 
+    toggleDock(true);
+}
 
 function loadTemplateIntoRoutine(templateId) {
     const t = templates.find(temp => temp.id === templateId);
@@ -730,7 +823,7 @@ function generateGrid(isInitial = false) {
         const count = activity[dateStr] || 0;
         const cell = document.createElement('div');
         cell.className = 'cell ' + getLevelClass(count);
-        if (isInitial) cell.style.animationDelay = `${(i % 7) * 0.1 + Math.floor(i / 7) * 0.02}s`;
+        if (isInitial && count > 0) cell.style.animationDelay = `${(i % 7) * 0.1 + Math.floor(i / 7) * 0.02}s`;
         if (dateStr === getTodayString()) cell.id = 'today-cell';
         streakGrid.appendChild(cell);
         tempDate.setDate(tempDate.getDate() + 1);
@@ -811,21 +904,109 @@ function triggerConfetti() {
 
 async function shareProgress() {
     const btn = document.getElementById('share-btn');
+    const originalText = btn.innerHTML;
     btn.innerText = "Generating Sticker...";
     btn.disabled = true;
+
+    // Recalculate streak for accuracy
+    const today = getTodayString();
+    let currentStreak = 0;
+    const streakTempDate = new Date();
+    while (true) {
+        const dateStr = getDateString(streakTempDate);
+        if (activity[dateStr] && activity[dateStr] > 0) {
+            currentStreak++;
+            streakTempDate.setDate(streakTempDate.getDate() - 1);
+        } else {
+            if (dateStr === today && currentStreak === 0) {
+                streakTempDate.setDate(streakTempDate.getDate() - 1);
+                const yesterdayStr = getDateString(streakTempDate);
+                if (!(activity[yesterdayStr] > 0)) break;
+                else continue; 
+            }
+            break;
+        }
+    }
+
+    // Populate Template
+    const todayFullDate = new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+    document.getElementById('sticker-date').innerText = todayFullDate;
+    document.getElementById('sticker-streak').innerText = currentStreak;
+    document.getElementById('sticker-volume').innerText = (activity[today] || 0).toLocaleString();
+
+    const stickerExList = document.getElementById('sticker-exercises');
+    stickerExList.innerHTML = '';
+    const workout = exerciseHistory[today] || [];
+    
+    if (workout.length === 0) {
+        stickerExList.innerHTML = '<li class="sticker-ex-item" style="justify-content:center; opacity:0.5;">No exercises logged today</li>';
+    } else {
+        workout.forEach(ex => {
+            const li = document.createElement('li');
+            li.className = 'sticker-ex-item';
+            li.innerHTML = `
+                <span class="sticker-ex-name">${ex.name}</span>
+                <span class="sticker-ex-sets">${ex.sets} × ${ex.reps}</span>
+            `;
+            stickerExList.appendChild(li);
+        });
+    }
+
+    // Capture using html2canvas
     setTimeout(async () => {
         try {
-            const canvas = document.createElement('canvas');
-            canvas.width = 1080; canvas.height = 1920;
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.textAlign = 'center'; ctx.fillStyle = '#6c5ce7';
-            ctx.font = 'bold 110px Nunito, sans-serif'; ctx.fillText('WORKOUT COMPLETE!', 540, 500);
-            const link = document.createElement('a');
-            link.download = 'workout.png'; link.href = canvas.toDataURL(); link.click();
-            btn.innerText = "Share Progress"; btn.disabled = false;
-        } catch (e) { btn.innerText = "Error!"; }
-    }, 800);
+            const template = document.getElementById('sticker-template');
+            const canvas = await html2canvas(template, {
+                backgroundColor: null,
+                scale: 2, // High resolution
+                logging: false,
+                useCORS: true
+            });
+
+            const dataUrl = canvas.toDataURL('image/png');
+            const fileName = `workout-receipt-${today}.png`;
+
+            // Try direct sharing via Web Share API
+            if (navigator.canShare && navigator.share) {
+                try {
+                    const blob = await (await fetch(dataUrl)).blob();
+                    const file = new File([blob], fileName, { type: 'image/png' });
+
+                    if (navigator.canShare({ files: [file] })) {
+                        await navigator.share({
+                            files: [file],
+                            title: 'FitLogr Receipt',
+                            text: 'Check out my routine today!'
+                        });
+                        // If share succeeds, we don't necessarily need to download
+                    } else {
+                        throw new Error('Share not supported for this file');
+                    }
+                } catch (shareErr) {
+                    console.warn('Direct share failed, falling back to download:', shareErr);
+                    const link = document.createElement('a');
+                    link.download = fileName;
+                    link.href = dataUrl;
+                    link.click();
+                }
+            } else {
+                // Standard fallback for desktop/unsupported browsers
+                const link = document.createElement('a');
+                link.download = fileName;
+                link.href = dataUrl;
+                link.click();
+            }
+
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+            triggerConfetti();
+            playSuccessChime();
+        } catch (e) {
+            console.error('Sticker Generation Error:', e);
+            btn.innerText = "Error!";
+            setTimeout(() => { btn.innerHTML = originalText; btn.disabled = false; }, 2000);
+        }
+    }, 100);
 }
 
 function openEditModal(id) {
@@ -836,6 +1017,7 @@ function openEditModal(id) {
     editSetsInput.value = ex.sets;
     editRepsInput.value = ex.reps;
     editModal.classList.add('show');
+    toggleDock(false);
 }
 
 saveEditBtn.onclick = () => {
@@ -846,10 +1028,14 @@ saveEditBtn.onclick = () => {
     ex.reps = parseInt(editRepsInput.value);
     saveData(); renderExercises(); renderVolumeChart(); updateQuickStats();
     editModal.classList.remove('show');
+    toggleDock(true);
     playTactileClick('hard');
 };
 
-cancelEditBtn.onclick = () => editModal.classList.remove('show');
+cancelEditBtn.onclick = () => {
+    editModal.classList.remove('show');
+    toggleDock(true);
+};
 
 themeToggleBtn.onclick = () => {
     theme = theme === 'light' ? 'dark' : 'light';
@@ -875,5 +1061,99 @@ window.closeLoadTemplateModal = closeLoadTemplateModal;
 window.shareProgress = shareProgress;
 window.stopTimer = stopTimer;
 window.toggleTemplatePreview = toggleTemplatePreview;
+
+function toggleDock(visible) {
+    const tabBar = document.querySelector('.tab-bar');
+    if (visible) tabBar.classList.remove('dock-hidden');
+    else tabBar.classList.add('dock-hidden');
+}
+
+function showStatInfo(type) {
+    const modal = document.getElementById('stat-info-modal');
+    const title = document.getElementById('stat-info-title');
+    const text = document.getElementById('stat-info-text');
+
+    const info = {
+        streak: {
+            title: 'Day Streak',
+            text: 'The number of consecutive days you have logged at least one exercise. Rest days will break the streak!'
+        },
+        lifetime: {
+            title: 'Total Reps',
+            text: 'Your lifetime cumulative total of all repetitions across all exercises logged in the app.'
+        },
+        pr: {
+            title: 'Personal Best',
+            text: 'The maximum total volume (total reps) you have ever completed in a single day.'
+        },
+        avg: {
+            title: 'Daily Avg',
+            text: 'Your average daily volume (reps) calculated over the last 30 days, including any rest days.'
+        }
+    };
+
+    if (info[type]) {
+        title.innerText = info[type].title;
+        text.innerText = info[type].text;
+        modal.classList.add('show');
+        toggleDock(false);
+        playTactileClick('soft');
+    }
+}
+
+function closeStatInfo() {
+    document.getElementById('stat-info-modal').classList.remove('show');
+    toggleDock(true);
+    playTactileClick('soft');
+}
+
+function openWeeklyGoalModal() {
+    const modal = document.getElementById('weekly-goal-modal');
+    document.getElementById('weekly-goal-display').innerText = weeklyGoal;
+    modal.classList.add('show');
+    toggleDock(false);
+    playTactileClick('soft');
+}
+
+function closeWeeklyGoalModal() {
+    document.getElementById('weekly-goal-modal').classList.remove('show');
+    toggleDock(true);
+    playTactileClick('soft');
+    saveData();
+    updateWeeklyProgress();
+}
+
+function adjustWeeklyGoal(amount) {
+    weeklyGoal = Math.max(1, Math.min(7, weeklyGoal + amount));
+    document.getElementById('weekly-goal-display').innerText = weeklyGoal;
+    playTactileClick('soft');
+}
+
+function updateWeeklyProgress() {
+    const now = new Date();
+    const day = now.getDay(); 
+    const diff = now.getDate() - day + (day === 0 ? -6 : 1); 
+    const monday = new Date(now.setDate(diff));
+    monday.setHours(0, 0, 0, 0);
+
+    let workoutsThisWeek = 0;
+    Object.keys(activity).forEach(dateStr => {
+        // Date string is YYYY-MM-DD
+        const parts = dateStr.split('-');
+        const d = new Date(parts[0], parts[1] - 1, parts[2]);
+        if (d >= monday && activity[dateStr] > 0) {
+            workoutsThisWeek++;
+        }
+    });
+
+    const progress = Math.min((workoutsThisWeek / weeklyGoal) * 100, 100);
+    const tabBar = document.querySelector('.tab-bar');
+    if (tabBar) tabBar.style.setProperty('--dock-progress', `${progress}%`);
+}
+
+window.showStatInfo = showStatInfo;
+window.closeStatInfo = closeStatInfo;
+window.adjustWeeklyGoal = adjustWeeklyGoal;
+window.closeWeeklyGoalModal = closeWeeklyGoalModal;
 
 init();
