@@ -837,25 +837,15 @@ function renderVolumeChart() {
             wrapper.className = 'chart-bar-wrapper';
             bar = document.createElement('div');
             bar.className = 'chart-bar';
-            bar.style.height = '0%';
             const label = document.createElement('div');
             label.className = 'chart-label'; label.innerText = day.label;
             wrapper.appendChild(bar); wrapper.appendChild(label); container.appendChild(wrapper);
         } else {
             bar = existingBars[i].querySelector('.chart-bar');
-            // Reset to 0% immediately without transition to prepare for re-animation
-            bar.style.transition = 'none';
-            bar.style.height = '0%';
-            // Trigger reflow
-            void bar.offsetHeight;
-            bar.style.transition = '';
         }
 
         bar.title = `${day.date}: ${day.volume} reps`;
-        // Use requestAnimationFrame for smoother timing
-        requestAnimationFrame(() => {
-            bar.style.height = `${Math.max(heightPercent, 5)}%`;
-        });
+        bar.style.height = `${Math.max(heightPercent, 5)}%`;
     });
 }
 
