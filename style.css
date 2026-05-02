@@ -75,7 +75,7 @@ body {
     box-sizing: border-box;
 }
 
-/* Two-Screen Architecture */
+/* Depth Fade Architecture */
 .app-viewport {
     width: auto;
     position: relative;
@@ -85,18 +85,33 @@ body {
 }
 
 .screens-container {
-    display: flex;
-    width: 300%;
-    transition: transform 0.8s var(--spring);
-    align-items: flex-start;
+    position: relative;
+    width: 100%;
 }
 
 .screen {
-    width: 33.333%;
-    transition: opacity 0.6s ease;
+    width: 100%;
     padding: 10px 1.5rem 120px 1.5rem; /* Extra bottom padding for floating dock */
     box-sizing: border-box;
-    transition: transform 0.5s var(--spring);
+    transition: opacity 0.4s ease, transform 0.6s var(--spring);
+}
+
+.screen:not(.active) {
+    position: absolute;
+    top: 0;
+    left: 0;
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.95);
+    z-index: 1;
+}
+
+.screen.active {
+    position: relative;
+    opacity: 1;
+    pointer-events: all;
+    transform: scale(1);
+    z-index: 2;
 }
 
 /* Standardized Gesture Items (Exercises & Templates) */

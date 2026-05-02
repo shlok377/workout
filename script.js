@@ -153,7 +153,6 @@ function switchScreen(screen) {
     [screenStats, screenWorkout, screenTemplates].forEach(s => s.classList.remove('active'));
 
     if (screen === 'stats') {
-        container.style.transform = 'translateX(0%)';
         tabs[0].classList.add('active');
         screenStats.classList.add('active');
         
@@ -162,7 +161,6 @@ function switchScreen(screen) {
         renderVolumeChart();
         updateQuickStats();
     } else if (screen === 'workout') {
-        container.style.transform = 'translateX(-33.333%)';
         tabs[1].classList.add('active');
         screenWorkout.classList.add('active');
         
@@ -170,7 +168,6 @@ function switchScreen(screen) {
         renderDatePicker(true);
         renderExercises();
     } else if (screen === 'templates') {
-        container.style.transform = 'translateX(-66.666%)';
         tabs[2].classList.add('active');
         screenTemplates.classList.add('active');
         
@@ -189,9 +186,28 @@ function initDockGestures() {
     tabBar.addEventListener('touchstart', (e) => {
         touchStartX = e.changedTouches[0].screenX;
         touchStartY = e.changedTouches[0].screenY;
+        tabBar.style.transition = 'none'; // Disable transition for instant tracking
+    }, { passive: true });
+
+    tabBar.addEventListener('touchmove', (e) => {
+        const touchCurrentX = e.changedTouches[0].screenX;
+        const touchCurrentY = e.changedTouches[0].screenY;
+        
+        const deltaX = touchCurrentX - touchStartX;
+        const deltaY = touchCurrentY - touchStartY;
+        
+        // Only apply inertia if it's primarily a horizontal swipe
+        if (Math.abs(deltaX) > Math.abs(deltaY)) {
+            // Dampen the movement so it feels like stretching a rubber band (0.4 resistance)
+            const dampedDeltaX = deltaX * 0.1;
+            tabBar.style.transform = `translateX(calc(-50% + ${dampedDeltaX}px))`;
+        }
     }, { passive: true });
 
     tabBar.addEventListener('touchend', (e) => {
+        tabBar.style.transition = ''; // Re-enable CSS transition (bouncy spring)
+        tabBar.style.transform = ''; // Snap back to center
+
         const touchEndX = e.changedTouches[0].screenX;
         const touchEndY = e.changedTouches[0].screenY;
         
