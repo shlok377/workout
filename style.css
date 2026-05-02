@@ -27,6 +27,54 @@
     --speed-fast: 0.6s;
 }
 
+[data-theme="alpine-sage"] {
+    --bg-color: #E4DDD3;
+    --text-color: #424642;
+    --text-light: #6a6a6a;
+    --primary-color: #00A19B;
+    --primary-light: #4DBBB7;
+    --neu-shadow-dark: rgba(180, 172, 160, 0.6);
+    --neu-shadow-light: rgba(255, 255, 255, 0.6);
+    --neu-inset-dark: rgba(180, 172, 160, 0.7);
+    --neu-inset-light: rgba(255, 255, 255, 0.8);
+}
+
+[data-theme="espresso"] {
+    --bg-color: #2E1F26;
+    --text-color: #E4DDD3;
+    --text-light: #9a8a8a;
+    --primary-color: #C87740;
+    --primary-light: #D59266;
+    --neu-shadow-dark: rgba(0, 0, 0, 0.5);
+    --neu-shadow-light: rgba(74, 52, 62, 0.3);
+    --neu-inset-dark: rgba(0, 0, 0, 0.6);
+    --neu-inset-light: rgba(74, 52, 62, 0.4);
+}
+
+[data-theme="cobalt"] {
+    --bg-color: #EDF1F5;
+    --text-color: #2D3436;
+    --text-light: #636E72;
+    --primary-color: #0145F2;
+    --primary-light: #4E7BFF;
+    --neu-shadow-dark: rgba(200, 210, 220, 0.6);
+    --neu-shadow-light: rgba(255, 255, 255, 0.8);
+    --neu-inset-dark: rgba(200, 210, 220, 0.7);
+    --neu-inset-light: rgba(255, 255, 255, 0.9);
+}
+
+[data-theme="midnight"] {
+    --bg-color: #1F2140;
+    --text-color: #E2E8F0;
+    --text-light: #94A3B8;
+    --primary-color: #7C83FF;
+    --primary-light: #A5A9FF;
+    --neu-shadow-dark: rgba(0, 0, 0, 0.5);
+    --neu-shadow-light: rgba(50, 55, 100, 0.3);
+    --neu-inset-dark: rgba(0, 0, 0, 0.6);
+    --neu-inset-light: rgba(50, 55, 100, 0.4);
+}
+
 [data-theme="dark"] {
     --bg-color: #1a202c;
     --text-color: #e2e8f0;
@@ -91,7 +139,7 @@ body {
 
 .screen {
     width: 100%;
-    padding: 10px 1.5rem 120px 1.5rem; /* Extra bottom padding for floating dock */
+    padding: 25px 1.5rem 120px 1.5rem; /* Increased top padding to 25px for shadow clearance */
     box-sizing: border-box;
     transition: opacity 0.4s ease, transform 0.6s var(--spring);
 }
@@ -408,6 +456,39 @@ body {
     letter-spacing: 0.5px;
 }
 
+.weekly-badge {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-color: var(--bg-color);
+    padding: 6px 12px;
+    border-radius: 12px;
+    box-shadow: var(--inner-shadow);
+    cursor: pointer;
+    transition: all 0.4s var(--spring);
+    min-width: 80px;
+}
+
+.weekly-badge:active {
+    transform: scale(0.95);
+}
+
+#weekly-progress-text {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--primary-color);
+    line-height: 1.1;
+}
+
+.badge-label {
+    font-size: 0.55rem;
+    font-weight: 800;
+    color: var(--text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
 /* Tab Bar Styles */
 .tab-bar {
     position: fixed;
@@ -426,20 +507,6 @@ body {
     animation-delay: 0.6s;
     transition: transform 0.6s var(--spring);
     overflow: hidden; /* Ensure progress bar stays inside */
-}
-
-.tab-bar::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: var(--dock-progress, 0%);
-    background-color: var(--primary-color);
-    opacity: 0.1; /* Very subtle progress overlay */
-    transition: width 0.8s var(--spring);
-    pointer-events: none;
-    z-index: -1;
 }
 
 .tab-bar.dock-hidden {
@@ -480,7 +547,7 @@ header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 2rem;
+    margin-bottom: 1.2rem;
     animation: slideUpFade var(--speed-base) var(--spring-soft) backwards;
     animation-delay: 0.1s;
     width: 100%;
@@ -504,6 +571,73 @@ header {
 .theme-toggle-btn:active {
     box-shadow: var(--btn-active);
     transform: scale(0.82);
+}
+
+.theme-toggle-wrapper {
+    position: relative;
+    z-index: 2000;
+}
+
+.theme-dropdown {
+    position: absolute;
+    top: 60px;
+    right: 0;
+    width: 200px;
+    background-color: var(--bg-color);
+    border-radius: 20px;
+    padding: 10px;
+    box-shadow: var(--card-shadow);
+    display: flex; /* Keep layout active */
+    flex-direction: column;
+    gap: 8px;
+    transform: translateX(40px) scale(0.85); /* Exaggerate start for better feel */
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.4s ease, transform 0.6s var(--spring), visibility 0.4s;
+    pointer-events: none;
+    z-index: 2100;
+}
+
+.theme-dropdown.show {
+    visibility: visible;
+    transform: translateX(0) scale(1);
+    opacity: 1;
+    pointer-events: all;
+}
+
+.theme-option {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 15px;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: all 0.3s var(--spring);
+    font-weight: 700;
+    font-size: 0.9rem;
+    color: var(--text-color);
+}
+
+.theme-option:active {
+    box-shadow: var(--btn-active);
+    transform: scale(0.95);
+}
+
+.theme-swatch {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    box-shadow: 2px 2px 5px var(--neu-shadow-dark), -2px -2px 5px var(--neu-shadow-light);
+    border: 2px solid transparent;
+    transition: border-color 0.3s ease;
+}
+
+.theme-option.active .theme-swatch {
+    border-color: var(--primary-color);
+}
+
+.theme-name {
+    flex-grow: 1;
 }
 
 .screen.active #grid-section {
@@ -596,19 +730,15 @@ h2.section-title {
     transition: background-color 0.8s var(--spring), transform 0.8s var(--spring);
 }
 
-.screen.active .cell:not(.level-0) {
-    animation: cellStagger 0.4s var(--spring) backwards;
-}
-
 .cell.pulse {
     animation: pulseGlow 0.8s var(--spring);
     z-index: 10;
 }
 
-.level-1 { background-color: rgba(108, 92, 231, 0.25); transform: scale(1.1); }
-.level-2 { background-color: rgba(108, 92, 231, 0.5); transform: scale(1.2); }
-.level-3 { background-color: rgba(108, 92, 231, 0.75); transform: scale(1.3); }
-.level-4 { background-color: rgba(108, 92, 231, 1); transform: scale(1.4); }
+.level-1 { background-color: var(--primary-color); opacity: 0.25; transform: scale(1.1); }
+.level-2 { background-color: var(--primary-color); opacity: 0.5; transform: scale(1.2); }
+.level-3 { background-color: var(--primary-color); opacity: 0.75; transform: scale(1.3); }
+.level-4 { background-color: var(--primary-color); opacity: 1; transform: scale(1.4); }
 
 .legend {
     display: flex;
@@ -930,8 +1060,9 @@ input:focus {
     background-color: var(--primary-color);
     border-radius: 8px 8px 4px 4px;
     box-shadow: var(--btn-shadow);
-    transition: height 1s var(--spring);
+    transition: height 0.8s var(--spring);
     min-height: 4px;
+    will-change: height;
 }
 
 .chart-label {

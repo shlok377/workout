@@ -14,9 +14,33 @@
     <div class="container">
         <header>
             <h1 class="neu-text">FitLogr</h1>
-            <button id="theme-toggle" class="theme-toggle-btn" title="Toggle Theme">
-                <svg class="icon-moon" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-            </button>
+            <div class="theme-toggle-wrapper">
+                <button id="theme-toggle" class="theme-toggle-btn" title="Change Theme" onclick="toggleThemeMenu(event)">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+                </button>
+                <div id="theme-dropdown" class="theme-dropdown">
+                    <div class="theme-option" onclick="setTheme('amethyst')">
+                        <div class="theme-swatch" style="background-color: #e0e5ec; border-bottom: 8px solid #6c5ce7;"></div>
+                        <span class="theme-name">Amethyst</span>
+                    </div>
+                    <div class="theme-option" onclick="setTheme('alpine-sage')">
+                        <div class="theme-swatch" style="background-color: #E4DDD3; border-bottom: 8px solid #00A19B;"></div>
+                        <span class="theme-name">Alpine Sage</span>
+                    </div>
+                    <div class="theme-option" onclick="setTheme('espresso')">
+                        <div class="theme-swatch" style="background-color: #2E1F26; border-bottom: 8px solid #C87740;"></div>
+                        <span class="theme-name">Espresso</span>
+                    </div>
+                    <div class="theme-option" onclick="setTheme('cobalt')">
+                        <div class="theme-swatch" style="background-color: #EDF1F5; border-bottom: 8px solid #0145F2;"></div>
+                        <span class="theme-name">Cobalt</span>
+                    </div>
+                    <div class="theme-option" onclick="setTheme('midnight')">
+                        <div class="theme-swatch" style="background-color: #1F2140; border-bottom: 8px solid #7C83FF;"></div>
+                        <span class="theme-name">Midnight</span>
+                    </div>
+                </div>
+            </div>
         </header>
 
         <main class="app-viewport">
@@ -43,7 +67,13 @@
                     </section>
 
                     <section id="grid-section" class="neu-card">
-                        <h2 class="section-title">Activity Streak</h2>
+                        <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 1.5rem;">
+                            <h2 class="section-title" style="margin-bottom: 0;">Activity Streak</h2>
+                            <div id="weekly-progress-badge" class="weekly-badge" onclick="openWeeklyGoalModal()">
+                                <span id="weekly-progress-text">0 / 0</span>
+                                <span class="badge-label">Workouts</span>
+                            </div>
+                        </div>
                         <div id="grid-wrapper">
                             <div id="streak-grid" class="grid"></div>
                         </div>

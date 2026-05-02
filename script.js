@@ -40,12 +40,59 @@ const templateNameInput = document.getElementById('template-name');
 const templateExList = document.getElementById('template-exercises-list');
 const templatesListUI = document.getElementById('templates-list');
 const loadTemplatesListUI = document.getElementById('load-templates-list');
+// Initial load theme
+document.documentElement.setAttribute('data-theme', theme);
 
-// Initialize
-function init() {
+// Theme Selection Logic
+function toggleThemeMenu(e) {
+    if (e) e.stopPropagation();
+    const dropdown = document.getElementById('theme-dropdown');
+    dropdown.classList.toggle('show');
+    playTactileClick('soft');
+}
+
+function setTheme(themeName) {
+    theme = themeName;
     document.documentElement.setAttribute('data-theme', theme);
-    updateThemeToggleUI();
-    
+    localStorage.setItem('theme', theme);
+
+    // Update UI
+    const dropdown = document.getElementById('theme-dropdown');
+    dropdown.classList.remove('show');
+
+    // Highlight active option
+    document.querySelectorAll('.theme-option').forEach(opt => {
+        // Get name from text content, lowercase and replace spaces with hyphens to match data-theme values
+        const optName = opt.querySelector('.theme-name').innerText.trim().toLowerCase().replace(/\s+/g, '-');
+        if (optName === themeName) opt.classList.add('active');
+        else opt.classList.remove('active');
+    });
+
+    playTactileClick('hard');
+
+    // Refresh components that might need re-rendering for theme colors (like the chart)
+    if (currentScreen === 'stats') {
+        renderVolumeChart();
+        generateGrid(false);
+    }
+}
+
+// Close dropdown on outside click
+window.addEventListener('click', () => {
+    const dropdown = document.getElementById('theme-dropdown');
+    if (dropdown && dropdown.classList.contains('show')) {
+        dropdown.classList.remove('show');
+    }
+});
+
+// Remove old theme toggle listener and add to global exposure
+window.toggleThemeMenu = toggleThemeMenu;
+window.setTheme = setTheme;
+
+function init() {
+    // Correct active state on initial load
+    setTheme(theme);
+
     cleanupOldData();
     renderDatePicker(true);
     renderExercises();
@@ -56,7 +103,8 @@ function init() {
     initGestures();
     initDockGestures();
 
-    setTimeout(scrollToToday, 1500);}
+    setTimeout(scrollToToday, 1500);
+}
 
 // Data Persistence
 function saveData() {
@@ -129,12 +177,6 @@ function selectDate(dateStr) {
     }
 }
 
-function updateThemeToggleUI() {
-    const sunIcon = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>`;
-    const moonIcon = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>`;
-    themeToggleBtn.innerHTML = theme === 'light' ? moonIcon : sunIcon;
-}
-
 // Navigation Logic
 let currentScreen = 'stats';
 const screensList = ['stats', 'workout', 'templates'];
@@ -176,17 +218,17 @@ function switchScreen(screen) {
     }
 }
 
-// Gesture Navigation for the Dock
+// Gesture Navigation for the Dock (Horizontal Only)
 function initDockGestures() {
     const tabBar = document.querySelector('.tab-bar');
     let touchStartX = 0;
     let touchStartY = 0;
-    const threshold = 50; // Minimum distance for a swipe
+    const threshold = 50; 
 
     tabBar.addEventListener('touchstart', (e) => {
         touchStartX = e.changedTouches[0].screenX;
         touchStartY = e.changedTouches[0].screenY;
-        tabBar.style.transition = 'none'; // Disable transition for instant tracking
+        tabBar.style.transition = 'none'; 
     }, { passive: true });
 
     tabBar.addEventListener('touchmove', (e) => {
@@ -196,17 +238,15 @@ function initDockGestures() {
         const deltaX = touchCurrentX - touchStartX;
         const deltaY = touchCurrentY - touchStartY;
         
-        // Only apply inertia if it's primarily a horizontal swipe
         if (Math.abs(deltaX) > Math.abs(deltaY)) {
-            // Dampen the movement so it feels like stretching a rubber band (0.4 resistance)
-            const dampedDeltaX = deltaX * 0.1;//RESISTANCE CHANGE
+            const dampedDeltaX = deltaX * 0.1;
             tabBar.style.transform = `translateX(calc(-50% + ${dampedDeltaX}px))`;
         }
     }, { passive: true });
 
     tabBar.addEventListener('touchend', (e) => {
-        tabBar.style.transition = ''; // Re-enable CSS transition (bouncy spring)
-        tabBar.style.transform = ''; // Snap back to center
+        tabBar.style.transition = ''; 
+        tabBar.style.transform = ''; 
 
         const touchEndX = e.changedTouches[0].screenX;
         const touchEndY = e.changedTouches[0].screenY;
@@ -214,26 +254,13 @@ function initDockGestures() {
         const deltaX = touchEndX - touchStartX;
         const deltaY = touchEndY - touchStartY;
 
-        // Check for Swipe Up
-        if (Math.abs(deltaY) > Math.abs(deltaX) && deltaY < -threshold) {
-            openWeeklyGoalModal();
-            return;
-        }
-
-        // Ensure the swipe is horizontal and meets the threshold
         if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > threshold) {
             const currentIndex = screensList.indexOf(currentScreen);
             
             if (deltaX > 0) {
-                // Swipe Right -> Previous Screen
-                if (currentIndex > 0) {
-                    switchScreen(screensList[currentIndex - 1]);
-                }
+                if (currentIndex > 0) switchScreen(screensList[currentIndex - 1]);
             } else {
-                // Swipe Left -> Next Screen
-                if (currentIndex < screensList.length - 1) {
-                    switchScreen(screensList[currentIndex + 1]);
-                }
+                if (currentIndex < screensList.length - 1) switchScreen(screensList[currentIndex + 1]);
             }
         }
     }, { passive: true });
@@ -789,7 +816,7 @@ function checkAllDone() {
 function renderVolumeChart() {
     const container = document.getElementById('volume-chart');
     if (!container) return;
-    container.innerHTML = '';
+    
     const last7Days = [];
     for (let i = 6; i >= 0; i--) {
         const d = new Date(); d.setDate(d.getDate() - i);
@@ -797,35 +824,65 @@ function renderVolumeChart() {
         last7Days.push({ date: dateStr, label: d.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0), volume: activity[dateStr] || 0 });
     }
     const maxVolume = Math.max(...last7Days.map(d => d.volume), 100);
-    last7Days.forEach(day => {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'chart-bar-wrapper';
+    
+    const existingBars = container.querySelectorAll('.chart-bar-wrapper');
+    const needsCreation = existingBars.length === 0;
+
+    last7Days.forEach((day, i) => {
         const heightPercent = (day.volume / maxVolume) * 100;
-        const bar = document.createElement('div');
-        bar.className = 'chart-bar';
-        bar.style.height = '0%';
+        let bar;
+
+        if (needsCreation) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'chart-bar-wrapper';
+            bar = document.createElement('div');
+            bar.className = 'chart-bar';
+            bar.style.height = '0%';
+            const label = document.createElement('div');
+            label.className = 'chart-label'; label.innerText = day.label;
+            wrapper.appendChild(bar); wrapper.appendChild(label); container.appendChild(wrapper);
+        } else {
+            bar = existingBars[i].querySelector('.chart-bar');
+            // Reset to 0% immediately without transition to prepare for re-animation
+            bar.style.transition = 'none';
+            bar.style.height = '0%';
+            // Trigger reflow
+            void bar.offsetHeight;
+            bar.style.transition = '';
+        }
+
         bar.title = `${day.date}: ${day.volume} reps`;
-        const label = document.createElement('div');
-        label.className = 'chart-label'; label.innerText = day.label;
-        wrapper.appendChild(bar); wrapper.appendChild(label); container.appendChild(wrapper);
-        setTimeout(() => { bar.style.height = `${Math.max(heightPercent, 5)}%`; }, 100);
+        // Use requestAnimationFrame for smoother timing
+        requestAnimationFrame(() => {
+            bar.style.height = `${Math.max(heightPercent, 5)}%`;
+        });
     });
 }
 
 function generateGrid(isInitial = false) {
-    streakGrid.innerHTML = '';
     const now = new Date();
     const startDate = new Date(now.getFullYear(), 0, 1);
     startDate.setDate(startDate.getDate() - startDate.getDay());
     const tempDate = new Date(startDate);
+    
+    // Check if grid already has cells
+    const existingCells = streakGrid.querySelectorAll('.cell');
+    const needsCreation = existingCells.length === 0;
+
     for (let i = 0; i < 371; i++) {
         const dateStr = getDateString(tempDate);
         const count = activity[dateStr] || 0;
-        const cell = document.createElement('div');
-        cell.className = 'cell ' + getLevelClass(count);
-        if (isInitial && count > 0) cell.style.animationDelay = `${(i % 7) * 0.1 + Math.floor(i / 7) * 0.02}s`;
-        if (dateStr === getTodayString()) cell.id = 'today-cell';
-        streakGrid.appendChild(cell);
+        
+        if (needsCreation) {
+            const cell = document.createElement('div');
+            cell.className = 'cell ' + getLevelClass(count);
+            if (dateStr === getTodayString()) cell.id = 'today-cell';
+            streakGrid.appendChild(cell);
+        } else {
+            const cell = existingCells[i];
+            cell.className = 'cell ' + getLevelClass(count);
+            if (dateStr === getTodayString()) cell.id = 'today-cell';
+        }
         tempDate.setDate(tempDate.getDate() + 1);
     }
 }
@@ -1037,14 +1094,6 @@ cancelEditBtn.onclick = () => {
     toggleDock(true);
 };
 
-themeToggleBtn.onclick = () => {
-    theme = theme === 'light' ? 'dark' : 'light';
-    document.documentElement.setAttribute('data-theme', theme);
-    updateThemeToggleUI();
-    localStorage.setItem('theme', theme);
-    playTactileClick('hard');
-};
-
 // Global Exposure
 window.switchScreen = switchScreen;
 window.toggleExercise = toggleExercise;
@@ -1147,8 +1196,12 @@ function updateWeeklyProgress() {
     });
 
     const progress = Math.min((workoutsThisWeek / weeklyGoal) * 100, 100);
-    const tabBar = document.querySelector('.tab-bar');
-    if (tabBar) tabBar.style.setProperty('--dock-progress', `${progress}%`);
+
+    // Update the Stats screen badge
+    const badgeText = document.getElementById('weekly-progress-text');
+    if (badgeText) {
+        badgeText.innerText = `${workoutsThisWeek} / ${weeklyGoal}`;
+    }
 }
 
 window.showStatInfo = showStatInfo;
