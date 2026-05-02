@@ -138,27 +138,36 @@ function getTodayString() {
 // Date Picker Logic
 function renderDatePicker(isInitial = false) {
     if (!datePicker) return;
-    datePicker.innerHTML = '';
     const today = new Date();
     
+    // Check if we need to create or update
+    const existingItems = datePicker.querySelectorAll('.date-item');
+    const needsCreation = existingItems.length === 0;
+
     for (let i = 0; i < 15; i++) {
         const d = new Date();
         d.setDate(today.getDate() - i);
         const dateStr = getDateString(d);
         
-        const dateItem = document.createElement('div');
-        dateItem.className = `date-item ${dateStr === selectedDate ? 'active' : ''} ${isInitial ? 'pop-animate' : ''}`;
-        
         const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
         const dayNum = d.getDate();
         
-        dateItem.innerHTML = `
-            <span class="date-day">${dayName}</span>
-            <span class="date-num">${dayNum}</span>
-        `;
-        
-        dateItem.onclick = () => selectDate(dateStr);
-        datePicker.appendChild(dateItem);
+        if (needsCreation) {
+            const dateItem = document.createElement('div');
+            dateItem.className = `date-item ${dateStr === selectedDate ? 'active' : ''}`;
+            dateItem.innerHTML = `
+                <span class="date-day">${dayName}</span>
+                <span class="date-num">${dayNum}</span>
+            `;
+            dateItem.onclick = () => selectDate(dateStr);
+            datePicker.appendChild(dateItem);
+        } else {
+            const dateItem = existingItems[i];
+            dateItem.className = `date-item ${dateStr === selectedDate ? 'active' : ''}`;
+            dateItem.querySelector('.date-day').innerText = dayName;
+            dateItem.querySelector('.date-num').innerText = dayNum;
+            dateItem.onclick = () => selectDate(dateStr);
+        }
     }
 }
 
@@ -208,7 +217,7 @@ function switchScreen(screen) {
         
         // Re-trigger animations
         renderDatePicker(true);
-        renderExercises();
+        renderExercises(true);
     } else if (screen === 'templates') {
         tabs[2].classList.add('active');
         screenTemplates.classList.add('active');
@@ -570,26 +579,56 @@ function updateExerciseDOM(id) {
     }
 }
 
-function renderExercises() {
-    exerciseList.innerHTML = '';
+function renderExercises(isFocus = false) {
     const workout = exerciseHistory[selectedDate] || [];
+    const container = exerciseList;
     
     if (workout.length === 0) {
-        exerciseList.innerHTML = `<li style="text-align:center; padding: 2rem; color: var(--text-light); opacity: 0.5;">No exercises for this day</li>`;
+        container.innerHTML = `<li style="text-align:center; padding: 2rem; color: var(--text-light); opacity: 0.5;">No exercises for this day</li>`;
         checkAllDone();
         return;
     }
 
+    // Remove any non-exercise items (like the "No exercises" message)
+    if (container.querySelector('li:not([id^="exercise-"])')) {
+        container.innerHTML = '';
+    }
+
+    const currentIds = workout.map(ex => `exercise-${ex.id}`);
+    
+    // Remove items that are no longer in the list
+    Array.from(container.children).forEach(child => {
+        if (child.id && !currentIds.includes(child.id)) {
+            child.remove();
+        }
+    });
+
     workout.forEach((ex, index) => {
-        const li = document.createElement('li');
-        li.id = `exercise-${ex.id}`;
+        const id = `exercise-${ex.id}`;
+        let li = document.getElementById(id);
         const isNew = ex.id === lastAddedId;
+
+        if (!li) {
+            li = document.createElement('li');
+            li.id = id;
+            container.appendChild(li);
+        }
+        
+        // Re-trigger animation on focus or if new
+        if (isFocus || isNew) {
+            li.style.animation = 'none';
+            void li.offsetHeight; // Trigger reflow
+            li.style.animation = '';
+            li.style.animationDelay = isNew ? '0s' : `${index * 0.05}s`;
+        } else if (!lastAddedId) {
+            // If we are just refreshing the list (e.g. after a toggle), 
+            // ensure existing delays don't cause "ghost" animations
+            li.style.animationDelay = `${index * 0.05}s`;
+        }
+        
         li.className = `exercise-item ${ex.completed ? 'done-state' : ''} ${isNew ? 'new-item' : ''}`;
         
-        // Add staggered animation delay
-        li.style.animationDelay = `${index * 0.05}s`;
-        
-        li.innerHTML = `
+        const contentHtml = `
             <div class="swipe-bg swipe-bg-complete"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
             <div class="swipe-bg swipe-bg-delete"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path></svg></div>
             <div class="exercise-content">
@@ -599,8 +638,17 @@ function renderExercises() {
                 </div>
             </div>
         `;
-        exerciseList.appendChild(li);
+        
+        if (li.innerHTML !== contentHtml) {
+            li.innerHTML = contentHtml;
+        }
+
+        // Maintain order
+        if (container.children[index] !== li) {
+            container.insertBefore(li, container.children[index]);
+        }
     });
+
     lastAddedId = null; 
     checkAllDone();
 }
@@ -837,15 +885,25 @@ function renderVolumeChart() {
             wrapper.className = 'chart-bar-wrapper';
             bar = document.createElement('div');
             bar.className = 'chart-bar';
+            bar.style.height = '0%';
             const label = document.createElement('div');
             label.className = 'chart-label'; label.innerText = day.label;
             wrapper.appendChild(bar); wrapper.appendChild(label); container.appendChild(wrapper);
         } else {
             bar = existingBars[i].querySelector('.chart-bar');
+            // Reset to 0% immediately without transition to prepare for re-animation
+            bar.style.transition = 'none';
+            bar.style.height = '0%';
+            // Trigger reflow
+            void bar.offsetHeight;
+            bar.style.transition = '';
         }
 
         bar.title = `${day.date}: ${day.volume} reps`;
-        bar.style.height = `${Math.max(heightPercent, 5)}%`;
+        // Use requestAnimationFrame for smoother timing
+        requestAnimationFrame(() => {
+            bar.style.height = `${Math.max(heightPercent, 5)}%`;
+        });
     });
 }
 

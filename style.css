@@ -387,17 +387,6 @@ body {
     flex-shrink: 0;
 }
 
-.date-item.pop-animate {
-    animation: popIn var(--speed-base) var(--spring-soft) backwards;
-}
-
-.date-item.pop-animate:nth-child(1) { animation-delay: 0.1s; }
-.date-item.pop-animate:nth-child(2) { animation-delay: 0.15s; }
-.date-item.pop-animate:nth-child(3) { animation-delay: 0.2s; }
-.date-item.pop-animate:nth-child(4) { animation-delay: 0.25s; }
-.date-item.pop-animate:nth-child(5) { animation-delay: 0.3s; }
-.date-item.pop-animate:nth-child(n+6) { animation-delay: 0.35s; }
-
 .date-item:active {
     transform: scale(0.82);
     box-shadow: var(--btn-active);
@@ -429,16 +418,20 @@ body {
     margin-bottom: 1.2rem;
 }
 
+.stat-card {
+    will-change: transform, opacity;
+}
+
 .screen.active .stat-card {
     padding: 0.8rem;
     text-align: center;
-    animation: popIn var(--speed-base) var(--spring-soft) backwards;
+    animation: statPop 0.6s var(--spring) backwards;
 }
 
-.screen.active .stat-card:nth-child(1) { animation-delay: 0.1s; }
-.screen.active .stat-card:nth-child(2) { animation-delay: 0.2s; }
-.screen.active .stat-card:nth-child(3) { animation-delay: 0.3s; }
-.screen.active .stat-card:nth-child(4) { animation-delay: 0.4s; }
+.screen.active .stat-card:nth-child(1) { animation-delay: 0.05s; }
+.screen.active .stat-card:nth-child(2) { animation-delay: 0.1s; }
+.screen.active .stat-card:nth-child(3) { animation-delay: 0.15s; }
+.screen.active .stat-card:nth-child(4) { animation-delay: 0.2s; }
 
 .stat-value {
     display: block;
@@ -818,6 +811,11 @@ input:focus {
     transition: box-shadow 0.5s var(--spring), transform 0.5s var(--spring);
 }
 
+@keyframes statPop {
+    0% { opacity: 0; transform: translateY(20px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes popIn {
     0% { opacity: 0; transform: scale(0.4) translateY(30px); }
     100% { opacity: 1; transform: scale(1) translateY(0); }
@@ -1060,7 +1058,9 @@ input:focus {
     background-color: var(--primary-color);
     border-radius: 8px 8px 4px 4px;
     box-shadow: var(--btn-shadow);
+    transition: height 0.8s var(--spring);
     min-height: 4px;
+    will-change: height;
 }
 
 .chart-label {
