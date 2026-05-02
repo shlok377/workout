@@ -596,10 +596,6 @@ h2.section-title {
     transition: background-color 0.8s var(--spring), transform 0.8s var(--spring);
 }
 
-.screen.active .cell:not(.level-0) {
-    animation: cellStagger 0.4s var(--spring) backwards;
-}
-
 .cell.pulse {
     animation: pulseGlow 0.8s var(--spring);
     z-index: 10;
@@ -930,8 +926,9 @@ input:focus {
     background-color: var(--primary-color);
     border-radius: 8px 8px 4px 4px;
     box-shadow: var(--btn-shadow);
-    transition: height 1s var(--spring);
+    transition: height 0.8s var(--spring);
     min-height: 4px;
+    will-change: height;
 }
 
 .chart-label {

@@ -789,7 +789,7 @@ function checkAllDone() {
 function renderVolumeChart() {
     const container = document.getElementById('volume-chart');
     if (!container) return;
-    container.innerHTML = '';
+    
     const last7Days = [];
     for (let i = 6; i >= 0; i--) {
         const d = new Date(); d.setDate(d.getDate() - i);
@@ -797,35 +797,65 @@ function renderVolumeChart() {
         last7Days.push({ date: dateStr, label: d.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0), volume: activity[dateStr] || 0 });
     }
     const maxVolume = Math.max(...last7Days.map(d => d.volume), 100);
-    last7Days.forEach(day => {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'chart-bar-wrapper';
+    
+    const existingBars = container.querySelectorAll('.chart-bar-wrapper');
+    const needsCreation = existingBars.length === 0;
+
+    last7Days.forEach((day, i) => {
         const heightPercent = (day.volume / maxVolume) * 100;
-        const bar = document.createElement('div');
-        bar.className = 'chart-bar';
-        bar.style.height = '0%';
+        let bar;
+
+        if (needsCreation) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'chart-bar-wrapper';
+            bar = document.createElement('div');
+            bar.className = 'chart-bar';
+            bar.style.height = '0%';
+            const label = document.createElement('div');
+            label.className = 'chart-label'; label.innerText = day.label;
+            wrapper.appendChild(bar); wrapper.appendChild(label); container.appendChild(wrapper);
+        } else {
+            bar = existingBars[i].querySelector('.chart-bar');
+            // Reset to 0% immediately without transition to prepare for re-animation
+            bar.style.transition = 'none';
+            bar.style.height = '0%';
+            // Trigger reflow
+            void bar.offsetHeight;
+            bar.style.transition = '';
+        }
+
         bar.title = `${day.date}: ${day.volume} reps`;
-        const label = document.createElement('div');
-        label.className = 'chart-label'; label.innerText = day.label;
-        wrapper.appendChild(bar); wrapper.appendChild(label); container.appendChild(wrapper);
-        setTimeout(() => { bar.style.height = `${Math.max(heightPercent, 5)}%`; }, 100);
+        // Use requestAnimationFrame for smoother timing
+        requestAnimationFrame(() => {
+            bar.style.height = `${Math.max(heightPercent, 5)}%`;
+        });
     });
 }
 
 function generateGrid(isInitial = false) {
-    streakGrid.innerHTML = '';
     const now = new Date();
     const startDate = new Date(now.getFullYear(), 0, 1);
     startDate.setDate(startDate.getDate() - startDate.getDay());
     const tempDate = new Date(startDate);
+    
+    // Check if grid already has cells
+    const existingCells = streakGrid.querySelectorAll('.cell');
+    const needsCreation = existingCells.length === 0;
+
     for (let i = 0; i < 371; i++) {
         const dateStr = getDateString(tempDate);
         const count = activity[dateStr] || 0;
-        const cell = document.createElement('div');
-        cell.className = 'cell ' + getLevelClass(count);
-        if (isInitial && count > 0) cell.style.animationDelay = `${(i % 7) * 0.1 + Math.floor(i / 7) * 0.02}s`;
-        if (dateStr === getTodayString()) cell.id = 'today-cell';
-        streakGrid.appendChild(cell);
+        
+        if (needsCreation) {
+            const cell = document.createElement('div');
+            cell.className = 'cell ' + getLevelClass(count);
+            if (dateStr === getTodayString()) cell.id = 'today-cell';
+            streakGrid.appendChild(cell);
+        } else {
+            const cell = existingCells[i];
+            cell.className = 'cell ' + getLevelClass(count);
+            if (dateStr === getTodayString()) cell.id = 'today-cell';
+        }
         tempDate.setDate(tempDate.getDate() + 1);
     }
 }
