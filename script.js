@@ -603,6 +603,15 @@ function renderExercises(isFocus = false) {
         }
     });
 
+    // Reset animations in one pass to avoid layout thrashing
+    if (isFocus || lastAddedId) {
+        workout.forEach(ex => {
+            const li = document.getElementById(`exercise-${ex.id}`);
+            if (li) li.style.animation = 'none';
+        });
+        void container.offsetHeight; // Force single reflow
+    }
+
     workout.forEach((ex, index) => {
         const id = `exercise-${ex.id}`;
         let li = document.getElementById(id);
@@ -614,15 +623,11 @@ function renderExercises(isFocus = false) {
             container.appendChild(li);
         }
         
-        // Re-trigger animation on focus or if new
+        // Apply animations
         if (isFocus || isNew) {
-            li.style.animation = 'none';
-            void li.offsetHeight; // Trigger reflow
             li.style.animation = '';
             li.style.animationDelay = isNew ? '0s' : `${index * 0.05}s`;
         } else if (!lastAddedId) {
-            // If we are just refreshing the list (e.g. after a toggle), 
-            // ensure existing delays don't cause "ghost" animations
             li.style.animationDelay = `${index * 0.05}s`;
         }
         
@@ -876,6 +881,17 @@ function renderVolumeChart() {
     const existingBars = container.querySelectorAll('.chart-bar-wrapper');
     const needsCreation = existingBars.length === 0;
 
+    // Reset bars first to avoid layout thrashing
+    if (!needsCreation) {
+        existingBars.forEach(wrapper => {
+            const bar = wrapper.querySelector('.chart-bar');
+            bar.style.transition = 'none';
+            bar.style.height = '0%';
+        });
+        // Force a single reflow
+        void container.offsetHeight;
+    }
+
     last7Days.forEach((day, i) => {
         const heightPercent = (day.volume / maxVolume) * 100;
         let bar;
@@ -891,11 +907,6 @@ function renderVolumeChart() {
             wrapper.appendChild(bar); wrapper.appendChild(label); container.appendChild(wrapper);
         } else {
             bar = existingBars[i].querySelector('.chart-bar');
-            // Reset to 0% immediately without transition to prepare for re-animation
-            bar.style.transition = 'none';
-            bar.style.height = '0%';
-            // Trigger reflow
-            void bar.offsetHeight;
             bar.style.transition = '';
         }
 
