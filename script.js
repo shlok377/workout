@@ -102,7 +102,7 @@ function init() {
     updateQuickStats();
     updateWeeklyProgress();
     initGestures();
-    initDockGestures();
+    initGlobalGestures();
 
     setTimeout(scrollToToday, 1500);
 }
@@ -195,21 +195,23 @@ const screensList = ['stats', 'workout', 'templates'];
 function switchScreen(screen) {
     currentScreen = screen;
     const container = document.getElementById('screens-container');
-    const tabs = document.querySelectorAll('.tab-item');
-    const screenStats = document.getElementById('screen-stats');
-    const screenWorkout = document.getElementById('screen-workout');
-    const screenTemplates = document.getElementById('screen-templates');
+    const screenIndex = screensList.indexOf(screen);
     
+    // Slide the track
+    container.style.transform = `translateX(-${screenIndex * 33.333}%)`;
+
+    // Update Indicators
+    document.querySelectorAll('.indicator').forEach(ind => ind.classList.remove('active'));
+    const activeInd = document.getElementById(`ind-${screen}`);
+    if (activeInd) activeInd.classList.add('active');
+
+    // Update Active States
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(`screen-${screen}`).classList.add('active');
+
     playTactileClick('soft');
 
-    tabs.forEach(tab => tab.classList.remove('active'));
-    [screenStats, screenWorkout, screenTemplates].forEach(s => s.classList.remove('active'));
-
     if (screen === 'stats') {
-        tabs[0].classList.add('active');
-        screenStats.classList.add('active');
-        
-        // Defer Rendering for ultra-smooth CSS transitions
         requestAnimationFrame(() => {
             if (statsDirty) {
                 generateGrid(true);
@@ -220,69 +222,77 @@ function switchScreen(screen) {
             scrollToToday();
         });
     } else if (screen === 'workout') {
-        tabs[1].classList.add('active');
-        screenWorkout.classList.add('active');
-        
         requestAnimationFrame(() => {
             renderDatePicker(true);
             renderExercises(true);
         });
     } else if (screen === 'templates') {
-        tabs[2].classList.add('active');
-        screenTemplates.classList.add('active');
-        
         requestAnimationFrame(() => {
             renderTemplates();
         });
     }
 }
 
-// Gesture Navigation for the Dock (Horizontal Only)
-function initDockGestures() {
-    const tabBar = document.querySelector('.tab-bar');
-    let touchStartX = 0;
-    let touchStartY = 0;
-    const threshold = 50; 
+function toggleAddForm(show) {
+    const container = document.getElementById('pull-down-container');
+    if (!container) return;
+    if (show) {
+        container.classList.add('show');
+        playTactileClick('hard');
+        setTimeout(() => document.getElementById('exercise-name').focus(), 300);
+    } else {
+        container.classList.remove('show');
+    }
+}
 
-    tabBar.addEventListener('touchstart', (e) => {
-        touchStartX = e.changedTouches[0].screenX;
-        touchStartY = e.changedTouches[0].screenY;
-        tabBar.style.transition = 'none'; 
+// Global Gesture Engine
+function initGlobalGestures() {
+    let startX = 0;
+    let startY = 0;
+    let isHorizontal = false;
+    let isPullDown = false;
+    const threshold = 60;
+    const pullThreshold = 70;
+
+    document.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        isHorizontal = false;
+        isPullDown = false;
     }, { passive: true });
 
-    tabBar.addEventListener('touchmove', (e) => {
-        const touchCurrentX = e.changedTouches[0].screenX;
-        const touchCurrentY = e.changedTouches[0].screenY;
-        
-        const deltaX = touchCurrentX - touchStartX;
-        const deltaY = touchCurrentY - touchStartY;
-        
-        if (Math.abs(deltaX) > Math.abs(deltaY)) {
-            const dampedDeltaX = deltaX * 0.1;
-            tabBar.style.transform = `translateX(calc(-50% + ${dampedDeltaX}px))`;
-        }
-    }, { passive: true });
+    document.addEventListener('touchmove', (e) => {
+        const deltaX = e.touches[0].clientX - startX;
+        const deltaY = e.touches[0].clientY - startY;
 
-    tabBar.addEventListener('touchend', (e) => {
-        tabBar.style.transition = ''; 
-        tabBar.style.transform = ''; 
-
-        const touchEndX = e.changedTouches[0].screenX;
-        const touchEndY = e.changedTouches[0].screenY;
-        
-        const deltaX = touchEndX - touchStartX;
-        const deltaY = touchEndY - touchStartY;
-
-        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > threshold) {
-            const currentIndex = screensList.indexOf(currentScreen);
-            
-            if (deltaX > 0) {
-                if (currentIndex > 0) switchScreen(screensList[currentIndex - 1]);
-            } else {
-                if (currentIndex < screensList.length - 1) switchScreen(screensList[currentIndex + 1]);
+        if (!isHorizontal && !isPullDown) {
+            if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
+                isHorizontal = true;
+            } else if (deltaY > 10 && currentScreen === 'workout' && window.scrollY <= 0) {
+                isPullDown = true;
             }
         }
     }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+        const deltaX = e.changedTouches[0].clientX - startX;
+        const deltaY = e.changedTouches[0].clientY - startY;
+        const currentIndex = screensList.indexOf(currentScreen);
+
+        if (isHorizontal) {
+            if (deltaX > threshold && currentIndex > 0) {
+                switchScreen(screensList[currentIndex - 1]);
+            } else if (deltaX < -threshold && currentIndex < screensList.length - 1) {
+                switchScreen(screensList[currentIndex + 1]);
+            }
+        } else if (isPullDown && deltaY > pullThreshold) {
+            toggleAddForm(true);
+        }
+    });
+}
+
+function initDockGestures() {
+    initGlobalGestures();
 }
 
 // Quick Stats Calculation
@@ -522,7 +532,8 @@ exerciseForm.addEventListener('submit', (e) => {
     renderExercises();
     updateWeeklyProgress();
     exerciseForm.reset();
-    });
+    toggleAddForm(false);
+});
 
     function deleteExercise(id) {
     playTactileClick('soft');
