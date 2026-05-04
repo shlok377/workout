@@ -162,6 +162,30 @@ body {
     z-index: 2;
 }
 
+/* Optimized Content Transitions (Organized & Lightweight) */
+.screen .neu-card, .screen .stats-grid {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+    transition: opacity 0.3s ease, transform 0.4s ease;
+    will-change: transform, opacity;
+}
+
+.screen.active .neu-card, .screen.active .stats-grid {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    transition: opacity 0.6s ease, transform 0.8s var(--spring);
+}
+
+/* Staggered Delays for Smooth Entrance */
+#screen-stats.active .stats-grid { transition-delay: 0.1s; }
+#screen-stats.active #grid-section { transition-delay: 0.2s; }
+#screen-stats.active #chart-section { transition-delay: 0.3s; }
+
+#screen-workout.active #add-exercise-section { transition-delay: 0.1s; }
+#screen-workout.active #list-section { transition-delay: 0.2s; }
+
+#screen-templates.active .neu-card { transition-delay: 0.15s; }
+
 /* Standardized Gesture Items (Exercises & Templates) */
 .exercise-item, .template-item {
     position: relative;
@@ -419,15 +443,6 @@ body {
 }
 
 .stat-card {
-    will-change: transform, opacity;
-}
-
-.screen.active .stats-grid {
-    animation: slideUpFade var(--speed-base) var(--spring-soft) backwards;
-    animation-delay: 0.2s;
-}
-
-.screen.active .stat-card {
     padding: 0.8rem;
     text-align: center;
 }
@@ -632,30 +647,6 @@ header {
     flex-grow: 1;
 }
 
-.screen.active #grid-section {
-    animation: slideUpFade var(--speed-base) var(--spring-soft) backwards;
-    animation-delay: 0.3s;
-}
-
-.screen.active #chart-section {
-    animation: slideUpFade var(--speed-base) var(--spring-soft) backwards;
-    animation-delay: 0.4s;
-}
-
-.screen.active #add-exercise-section {
-    animation: slideUpFade var(--speed-base) var(--spring-soft) backwards;
-    animation-delay: 0.5s;
-    transition: all 0.8s var(--spring);
-    overflow: hidden;
-}
-
-.screen.active #list-section {
-    animation: slideUpFade var(--speed-base) var(--spring-soft) backwards;
-    animation-delay: 0.7s;
-    
-    transition: all 0.5s var(--spring);
-}
-
 .neu-text {
     font-weight: 800;
     font-size: 2rem;
@@ -811,8 +802,8 @@ input:focus {
 }
 
 @keyframes slideUpFade {
-    0% { opacity: 0; transform: translateY(30px); }
-    100% { opacity: 1; transform: translateY(0); }
+    0% { opacity: 0; transform: translateY(30px) scale(0.9); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes statPop {
@@ -1062,9 +1053,7 @@ input:focus {
     background-color: var(--primary-color);
     border-radius: 8px 8px 4px 4px;
     box-shadow: var(--btn-shadow);
-    transition: height 0.8s var(--spring);
     min-height: 4px;
-    will-change: height;
 }
 
 .chart-label {

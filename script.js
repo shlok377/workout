@@ -10,6 +10,7 @@ let timerInterval = null;
 let audioCtx = null;
 let currentEditingTemplateId = null;
 let weeklyGoal = parseInt(localStorage.getItem('weeklyGoal')) || 4;
+let statsDirty = true; // Flag for ultra-lightweight rendering
 
 // Gesture State
 let touchStartX = 0;
@@ -112,6 +113,7 @@ function saveData() {
     localStorage.setItem('activity', JSON.stringify(activity));
     localStorage.setItem('templates', JSON.stringify(templates));
     localStorage.setItem('weeklyGoal', weeklyGoal);
+    statsDirty = true;
 }
 
 function cleanupOldData() {
@@ -207,23 +209,31 @@ function switchScreen(screen) {
         tabs[0].classList.add('active');
         screenStats.classList.add('active');
         
-        // Re-trigger animations
-        generateGrid(true);
-        renderVolumeChart();
-        updateQuickStats();
+        // Defer Rendering for ultra-smooth CSS transitions
+        requestAnimationFrame(() => {
+            if (statsDirty) {
+                generateGrid(true);
+                renderVolumeChart();
+                updateQuickStats();
+                statsDirty = false;
+            }
+            scrollToToday();
+        });
     } else if (screen === 'workout') {
         tabs[1].classList.add('active');
         screenWorkout.classList.add('active');
         
-        // Re-trigger animations
-        renderDatePicker(true);
-        renderExercises(true);
+        requestAnimationFrame(() => {
+            renderDatePicker(true);
+            renderExercises(true);
+        });
     } else if (screen === 'templates') {
         tabs[2].classList.add('active');
         screenTemplates.classList.add('active');
         
-        // Re-trigger animations
-        renderTemplates();
+        requestAnimationFrame(() => {
+            renderTemplates();
+        });
     }
 }
 
@@ -881,17 +891,6 @@ function renderVolumeChart() {
     const existingBars = container.querySelectorAll('.chart-bar-wrapper');
     const needsCreation = existingBars.length === 0;
 
-    // Reset bars first to avoid layout thrashing
-    if (!needsCreation) {
-        existingBars.forEach(wrapper => {
-            const bar = wrapper.querySelector('.chart-bar');
-            bar.style.transition = 'none';
-            bar.style.height = '0%';
-        });
-        // Force a single reflow
-        void container.offsetHeight;
-    }
-
     last7Days.forEach((day, i) => {
         const heightPercent = (day.volume / maxVolume) * 100;
         let bar;
@@ -901,20 +900,15 @@ function renderVolumeChart() {
             wrapper.className = 'chart-bar-wrapper';
             bar = document.createElement('div');
             bar.className = 'chart-bar';
-            bar.style.height = '0%';
             const label = document.createElement('div');
             label.className = 'chart-label'; label.innerText = day.label;
             wrapper.appendChild(bar); wrapper.appendChild(label); container.appendChild(wrapper);
         } else {
             bar = existingBars[i].querySelector('.chart-bar');
-            bar.style.transition = '';
         }
 
         bar.title = `${day.date}: ${day.volume} reps`;
-        // Use requestAnimationFrame for smoother timing
-        requestAnimationFrame(() => {
-            bar.style.height = `${Math.max(heightPercent, 5)}%`;
-        });
+        bar.style.height = `${Math.max(heightPercent, 5)}%`;
     });
 }
 
