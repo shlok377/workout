@@ -13,6 +13,11 @@
 <body>
     <div class="container">
         <header>
+            <div class="screen-indicators">
+                <span class="indicator active" id="ind-stats"></span>
+                <span class="indicator" id="ind-workout"></span>
+                <span class="indicator" id="ind-templates"></span>
+            </div>
             <h1 class="neu-text">FitLogr</h1>
             <div class="theme-toggle-wrapper">
                 <button id="theme-toggle" class="theme-toggle-btn" title="Change Theme" onclick="toggleThemeMenu(event)">
@@ -20,23 +25,23 @@
                 </button>
                 <div id="theme-dropdown" class="theme-dropdown">
                     <div class="theme-option" onclick="setTheme('amethyst')">
-                        <div class="theme-swatch" style="background-color: #e0e5ec; border-bottom: 8px solid #6c5ce7;"></div>
+                        <div class="theme-swatch" style="background-color: #F4F2F6; border-bottom: 4px solid #6750A4;"></div>
                         <span class="theme-name">Amethyst</span>
                     </div>
                     <div class="theme-option" onclick="setTheme('alpine-sage')">
-                        <div class="theme-swatch" style="background-color: #E4DDD3; border-bottom: 8px solid #00A19B;"></div>
+                        <div class="theme-swatch" style="background-color: #EDF5F1; border-bottom: 4px solid #006A64;"></div>
                         <span class="theme-name">Alpine Sage</span>
                     </div>
                     <div class="theme-option" onclick="setTheme('espresso')">
-                        <div class="theme-swatch" style="background-color: #2E1F26; border-bottom: 8px solid #C87740;"></div>
+                        <div class="theme-swatch" style="background-color: #2E2522; border-bottom: 4px solid #FFB48A;"></div>
                         <span class="theme-name">Espresso</span>
                     </div>
                     <div class="theme-option" onclick="setTheme('cobalt')">
-                        <div class="theme-swatch" style="background-color: #EDF1F5; border-bottom: 8px solid #0145F2;"></div>
+                        <div class="theme-swatch" style="background-color: #EDF1F9; border-bottom: 4px solid #0060AA;"></div>
                         <span class="theme-name">Cobalt</span>
                     </div>
                     <div class="theme-option" onclick="setTheme('midnight')">
-                        <div class="theme-swatch" style="background-color: #1F2140; border-bottom: 8px solid #7C83FF;"></div>
+                        <div class="theme-swatch" style="background-color: #23242A; border-bottom: 4px solid #B4C5FF;"></div>
                         <span class="theme-name">Midnight</span>
                     </div>
                 </div>
@@ -75,7 +80,17 @@
                             </div>
                         </div>
                         <div id="grid-wrapper">
-                            <div id="streak-grid" class="grid"></div>
+                            <div class="grid-container">
+                                <div id="month-labels" class="month-labels"></div>
+                                <div class="grid-body">
+                                    <div class="day-labels">
+                                        <span>Mon</span>
+                                        <span>Wed</span>
+                                        <span>Fri</span>
+                                    </div>
+                                    <div id="streak-grid" class="grid"></div>
+                                </div>
+                            </div>
                         </div>
                         <div class="legend">
                             <span>Less</span>
@@ -91,10 +106,13 @@
                     <section id="chart-section" class="neu-card">
                         <h2 class="section-title">Volume Trend (7 Days)</h2>
                         <div id="volume-chart" class="chart-container"></div>
+                        <div id="chart-tooltip-area" class="chart-tooltip-area">
+                            <span class="tooltip-hint">Tap a bar to see exact volume</span>
+                        </div>
                     </section>
 
                     <div id="share-container" data-html2canvas-ignore>
-                        <button id="share-btn" class="neu-btn primary" onclick="shareProgress()">
+                        <button id="share-btn" class="neu-btn primary" onclick="shareProgress()" style="width: 100%;">
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 8px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
                             <span>Share Progress</span>
                         </button>
@@ -103,6 +121,28 @@
 
                 <!-- Screen 2: Workout -->
                 <div id="screen-workout" class="screen">
+                    <div id="pull-down-container" class="pull-down-container">
+                        <div class="pull-down-handle"></div>
+                        <section id="add-exercise-section" class="neu-card">
+                            <form id="exercise-form">
+                                <div class="neu-input-wrapper has-floating-label">
+                                    <input type="text" id="exercise-name" placeholder=" " required>
+                                    <label for="exercise-name">Exercise Name</label>
+                                </div>
+                                <div class="input-row">
+                                    <div class="neu-input-wrapper has-floating-label">
+                                        <input type="number" id="sets" placeholder=" " min="1" required>
+                                        <label for="sets">Sets</label>
+                                    </div>
+                                    <div class="neu-input-wrapper has-floating-label">
+                                        <input type="number" id="reps" placeholder=" " min="1" required>
+                                        <label for="reps">Reps</label>
+                                    </div>
+                                </div>
+                                <button type="submit" class="neu-btn primary">Add Exercise</button>
+                            </form>
+                        </section>
+                    </div>
                     
                     <section id="list-section" class="neu-card">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
@@ -119,22 +159,7 @@
                         <div id="date-picker" class="date-picker"></div>
                         <ul id="exercise-list"></ul>
                         <p class="gesture-hint" style="text-align: center; font-size: 0.75rem; color: var(--text-light); margin-top: 1rem; opacity: 0.7;">Swipe Right to Complete • Swipe Left to Delete • Long Press to Edit</p>
-                    </section>
-                    <section id="add-exercise-section" class="neu-card">
-                        <form id="exercise-form">
-                            <div class="neu-input-wrapper">
-                                <input type="text" id="exercise-name" placeholder="Exercise Name" required>
-                            </div>
-                            <div class="input-row">
-                                <div class="neu-input-wrapper">
-                                    <input type="number" id="sets" placeholder="Sets" min="1" required>
-                                </div>
-                                <div class="neu-input-wrapper">
-                                    <input type="number" id="reps" placeholder="Reps" min="1" required>
-                                </div>
-                            </div>
-                            <button type="submit" class="neu-btn primary">Add Exercise</button>
-                        </form>
+                        <p class="gesture-hint" style="text-align: center; font-size: 0.75rem; color: var(--text-light); margin-top: 0.5rem; opacity: 0.5;">Pull Down to Add Exercise</p>
                     </section>
                 </div>
 
@@ -148,36 +173,28 @@
                 </div>
             </div>
         </main>
+    </div>
 
-        <nav class="tab-bar">
-            <button class="tab-item active" onclick="switchScreen('stats')" title="Stats">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
-                <span class="tab-label">Stats</span>
-            </button>
-            <button class="tab-item" onclick="switchScreen('workout')" title="Workout">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v8H2z"></path><path d="M6 12h2"></path></svg>
-                <span class="tab-label">Workout</span>
-            </button>
-            <button class="tab-item" onclick="switchScreen('templates')" title="Templates">
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="9" y1="3" x2="9" y2="21"></line></svg>
-                <span class="tab-label">Templates</span>
-            </button>
-        </nav>
+    <!-- Rest of the body (Modals, overlays, etc.) remains same -->
+    <nav class="tab-bar" style="display: none;"></nav>
     </div>
 
     <!-- Modal for editing -->
     <div id="edit-modal" class="modal">
         <div class="modal-content neu-card">
             <h3>Edit Exercise</h3>
-            <div class="neu-input-wrapper">
-                <input type="text" id="edit-name" placeholder="Exercise Name">
+            <div class="neu-input-wrapper has-floating-label">
+                <input type="text" id="edit-name" placeholder=" ">
+                <label for="edit-name">Exercise Name</label>
             </div>
             <div class="input-row">
-                <div class="neu-input-wrapper">
-                    <input type="number" id="edit-sets" placeholder="Sets" min="1">
+                <div class="neu-input-wrapper has-floating-label">
+                    <input type="number" id="edit-sets" placeholder=" " min="1">
+                    <label for="edit-sets">Sets</label>
                 </div>
-                <div class="neu-input-wrapper">
-                    <input type="number" id="edit-reps" placeholder="Reps" min="1">
+                <div class="neu-input-wrapper has-floating-label">
+                    <input type="number" id="edit-reps" placeholder=" " min="1">
+                    <label for="edit-reps">Reps</label>
                 </div>
             </div>
             <div class="modal-buttons">
@@ -191,8 +208,9 @@
     <div id="template-modal" class="modal">
         <div class="modal-content neu-card">
             <h3 id="template-modal-title">Workout Template</h3>
-            <div class="neu-input-wrapper">
-                <input type="text" id="template-name" placeholder="Template Name (e.g., Push Day)">
+            <div class="neu-input-wrapper has-floating-label">
+                <input type="text" id="template-name" placeholder=" ">
+                <label for="template-name">Template Name (e.g., Push Day)</label>
             </div>
             <div id="template-exercises-container" style="max-height: 250px; overflow-y: auto; margin: 1rem 0; padding-right: 5px;">
                 <div id="template-exercises-list"></div>

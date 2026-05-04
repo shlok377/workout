@@ -102,7 +102,7 @@ function init() {
     updateQuickStats();
     updateWeeklyProgress();
     initGestures();
-    initDockGestures();
+    initGlobalGestures();
 
     setTimeout(scrollToToday, 1500);
 }
@@ -195,15 +195,21 @@ const screensList = ['stats', 'workout', 'templates'];
 function switchScreen(screen) {
     currentScreen = screen;
     const container = document.getElementById('screens-container');
-    const tabs = document.querySelectorAll('.tab-item');
-    const screenStats = document.getElementById('screen-stats');
-    const screenWorkout = document.getElementById('screen-workout');
-    const screenTemplates = document.getElementById('screen-templates');
+    const screenIndex = screensList.indexOf(screen);
     
-    playTactileClick('soft');
+    // Slide the track
+    container.style.transform = `translateX(-${screenIndex * 33.333}%)`;
 
-    tabs.forEach(tab => tab.classList.remove('active'));
-    [screenStats, screenWorkout, screenTemplates].forEach(s => s.classList.remove('active'));
+    // Update Indicators
+    document.querySelectorAll('.indicator').forEach(ind => ind.classList.remove('active'));
+    const activeInd = document.getElementById(`ind-${screen}`);
+    if (activeInd) activeInd.classList.add('active');
+
+    // Update Active States
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(`screen-${screen}`).classList.add('active');
+
+    playTactileClick('soft');
 
     if (screen === 'stats') {
         tabs[0].classList.add('active');
@@ -237,52 +243,66 @@ function switchScreen(screen) {
     }
 }
 
-// Gesture Navigation for the Dock (Horizontal Only)
-function initDockGestures() {
-    const tabBar = document.querySelector('.tab-bar');
-    let touchStartX = 0;
-    let touchStartY = 0;
-    const threshold = 50; 
+function toggleAddForm(show) {
+    const container = document.getElementById('pull-down-container');
+    if (!container) return;
+    if (show) {
+        container.classList.add('show');
+        playTactileClick('hard');
+        setTimeout(() => document.getElementById('exercise-name').focus(), 300);
+    } else {
+        container.classList.remove('show');
+    }
+}
 
-    tabBar.addEventListener('touchstart', (e) => {
-        touchStartX = e.changedTouches[0].screenX;
-        touchStartY = e.changedTouches[0].screenY;
-        tabBar.style.transition = 'none'; 
+// Global Gesture Engine
+function initGlobalGestures() {
+    let startX = 0;
+    let startY = 0;
+    let isHorizontal = false;
+    let isPullDown = false;
+    const threshold = 60;
+    const pullThreshold = 70;
+
+    document.addEventListener('touchstart', (e) => {
+        startX = e.touches[0].clientX;
+        startY = e.touches[0].clientY;
+        isHorizontal = false;
+        isPullDown = false;
     }, { passive: true });
 
-    tabBar.addEventListener('touchmove', (e) => {
-        const touchCurrentX = e.changedTouches[0].screenX;
-        const touchCurrentY = e.changedTouches[0].screenY;
-        
-        const deltaX = touchCurrentX - touchStartX;
-        const deltaY = touchCurrentY - touchStartY;
-        
-        if (Math.abs(deltaX) > Math.abs(deltaY)) {
-            const dampedDeltaX = deltaX * 0.1;
-            tabBar.style.transform = `translateX(calc(-50% + ${dampedDeltaX}px))`;
-        }
-    }, { passive: true });
+    document.addEventListener('touchmove', (e) => {
+        const deltaX = e.touches[0].clientX - startX;
+        const deltaY = e.touches[0].clientY - startY;
 
-    tabBar.addEventListener('touchend', (e) => {
-        tabBar.style.transition = ''; 
-        tabBar.style.transform = ''; 
-
-        const touchEndX = e.changedTouches[0].screenX;
-        const touchEndY = e.changedTouches[0].screenY;
-        
-        const deltaX = touchEndX - touchStartX;
-        const deltaY = touchEndY - touchStartY;
-
-        if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > threshold) {
-            const currentIndex = screensList.indexOf(currentScreen);
-            
-            if (deltaX > 0) {
-                if (currentIndex > 0) switchScreen(screensList[currentIndex - 1]);
-            } else {
-                if (currentIndex < screensList.length - 1) switchScreen(screensList[currentIndex + 1]);
+        if (!isHorizontal && !isPullDown) {
+            if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
+                isHorizontal = true;
+            } else if (deltaY > 10 && currentScreen === 'workout' && window.scrollY <= 0) {
+                isPullDown = true;
             }
         }
     }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+        const deltaX = e.changedTouches[0].clientX - startX;
+        const deltaY = e.changedTouches[0].clientY - startY;
+        const currentIndex = screensList.indexOf(currentScreen);
+
+        if (isHorizontal) {
+            if (deltaX > threshold && currentIndex > 0) {
+                switchScreen(screensList[currentIndex - 1]);
+            } else if (deltaX < -threshold && currentIndex < screensList.length - 1) {
+                switchScreen(screensList[currentIndex + 1]);
+            }
+        } else if (isPullDown && deltaY > pullThreshold) {
+            toggleAddForm(true);
+        }
+    });
+}
+
+function initDockGestures() {
+    initGlobalGestures();
 }
 
 // Quick Stats Calculation
@@ -522,7 +542,8 @@ exerciseForm.addEventListener('submit', (e) => {
     renderExercises();
     updateWeeklyProgress();
     exerciseForm.reset();
-    });
+    toggleAddForm(false);
+});
 
     function deleteExercise(id) {
     playTactileClick('soft');
@@ -594,6 +615,13 @@ function renderExercises(isFocus = false) {
     const container = exerciseList;
     
     if (workout.length === 0) {
+        container.innerHTML = `
+            <li class="exercise-item ghost-item">
+                <div class="exercise-content" style="opacity: 0.5; justify-content: center; border: 2px dashed var(--text-light); box-shadow: none;">
+                    <span style="font-size: 0.85rem; font-weight: 700;">No exercises. Add one below!</span>
+                </div>
+            </li>
+        `;
         container.innerHTML = `<li style="text-align:center; padding: 2rem; color: var(--text-light); opacity: 0.5;">No exercises for this day</li>`;
         checkAllDone();
         return;
@@ -632,6 +660,17 @@ function renderExercises(isFocus = false) {
             li.id = id;
             container.appendChild(li);
         }
+        
+        // Apply animations
+        if (isFocus || isNew) {
+            li.style.animation = '';
+            li.style.animationDelay = isNew ? '0s' : `${index * 0.05}s`;
+        } else if (!lastAddedId) {
+            li.style.animationDelay = `${index * 0.05}s`;
+        }
+        
+        li.className = `exercise-item ${ex.completed ? 'done-state' : ''} ${isNew ? 'new-item' : ''}`;
+        
         
         // Apply animations
         if (isFocus || isNew) {
@@ -878,16 +917,21 @@ function checkAllDone() {
 
 function renderVolumeChart() {
     const container = document.getElementById('volume-chart');
+    const tooltipArea = document.getElementById('chart-tooltip-area');
     if (!container) return;
-    
+
     const last7Days = [];
     for (let i = 6; i >= 0; i--) {
         const d = new Date(); d.setDate(d.getDate() - i);
         const dateStr = getDateString(d);
-        last7Days.push({ date: dateStr, label: d.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0), volume: activity[dateStr] || 0 });
+        last7Days.push({ 
+            date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), 
+            label: d.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0), 
+            volume: activity[dateStr] || 0 
+        });
     }
     const maxVolume = Math.max(...last7Days.map(d => d.volume), 100);
-    
+
     const existingBars = container.querySelectorAll('.chart-bar-wrapper');
     const needsCreation = existingBars.length === 0;
 
@@ -907,25 +951,58 @@ function renderVolumeChart() {
             bar = existingBars[i].querySelector('.chart-bar');
         }
 
-        bar.title = `${day.date}: ${day.volume} reps`;
+        // Add interactive tap behavior
+        bar.onclick = (e) => {
+            // Remove active class from all other bars
+            container.querySelectorAll('.chart-bar').forEach(b => b.classList.remove('active'));
+            bar.classList.add('active');
+
+            // Update tooltip area
+            tooltipArea.innerHTML = `
+                <div class="tooltip-data">
+                    <span class="tooltip-date">${day.date}</span>
+                    <span class="tooltip-volume">${day.volume.toLocaleString()} <small>Reps</small></span>
+                </div>
+            `;
+            playTactileClick('soft');
+        };
+
         bar.style.height = `${Math.max(heightPercent, 5)}%`;
     });
 }
-
 function generateGrid(isInitial = false) {
     const now = new Date();
     const startDate = new Date(now.getFullYear(), 0, 1);
     startDate.setDate(startDate.getDate() - startDate.getDay());
     const tempDate = new Date(startDate);
-    
-    // Check if grid already has cells
+
+    const monthLabels = document.getElementById('month-labels');
     const existingCells = streakGrid.querySelectorAll('.cell');
     const needsCreation = existingCells.length === 0;
+
+    if (needsCreation) monthLabels.innerHTML = '';
+
+    let currentMonth = -1;
 
     for (let i = 0; i < 371; i++) {
         const dateStr = getDateString(tempDate);
         const count = activity[dateStr] || 0;
-        
+        const month = tempDate.getMonth();
+
+        // Add Month Label if it's the start of a month
+        if (month !== currentMonth) {
+            currentMonth = month;
+            // Only add labels for the current year to avoid overlap with previous year's "Dec"
+            if (needsCreation && tempDate.getFullYear() === now.getFullYear()) {
+                const colIndex = Math.floor(i / 7);
+                const label = document.createElement('span');
+                label.className = 'month-label';
+                label.innerText = tempDate.toLocaleDateString('en-US', { month: 'short' });
+                label.style.left = `${colIndex * 18}px`; // 14px cell + 4px gap
+                monthLabels.appendChild(label);
+            }
+        }
+
         if (needsCreation) {
             const cell = document.createElement('div');
             cell.className = 'cell ' + getLevelClass(count);
@@ -939,7 +1016,6 @@ function generateGrid(isInitial = false) {
         tempDate.setDate(tempDate.getDate() + 1);
     }
 }
-
 function getLevelClass(count) {
     if (count === 0) return 'level-0';
     if (count < 20) return 'level-1';
