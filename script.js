@@ -10,6 +10,7 @@ let timerInterval = null;
 let audioCtx = null;
 let currentEditingTemplateId = null;
 let weeklyGoal = parseInt(localStorage.getItem('weeklyGoal')) || 4;
+let statsDirty = true; // Flag for ultra-lightweight rendering
 
 // Gesture State
 let touchStartX = 0;
@@ -112,6 +113,7 @@ function saveData() {
     localStorage.setItem('activity', JSON.stringify(activity));
     localStorage.setItem('templates', JSON.stringify(templates));
     localStorage.setItem('weeklyGoal', weeklyGoal);
+    statsDirty = true;
 }
 
 function cleanupOldData() {
@@ -138,27 +140,36 @@ function getTodayString() {
 // Date Picker Logic
 function renderDatePicker(isInitial = false) {
     if (!datePicker) return;
-    datePicker.innerHTML = '';
     const today = new Date();
     
+    // Check if we need to create or update
+    const existingItems = datePicker.querySelectorAll('.date-item');
+    const needsCreation = existingItems.length === 0;
+
     for (let i = 0; i < 15; i++) {
         const d = new Date();
         d.setDate(today.getDate() - i);
         const dateStr = getDateString(d);
         
-        const dateItem = document.createElement('div');
-        dateItem.className = `date-item ${dateStr === selectedDate ? 'active' : ''} ${isInitial ? 'pop-animate' : ''}`;
-        
         const dayName = d.toLocaleDateString('en-US', { weekday: 'short' });
         const dayNum = d.getDate();
         
-        dateItem.innerHTML = `
-            <span class="date-day">${dayName}</span>
-            <span class="date-num">${dayNum}</span>
-        `;
-        
-        dateItem.onclick = () => selectDate(dateStr);
-        datePicker.appendChild(dateItem);
+        if (needsCreation) {
+            const dateItem = document.createElement('div');
+            dateItem.className = `date-item ${dateStr === selectedDate ? 'active' : ''}`;
+            dateItem.innerHTML = `
+                <span class="date-day">${dayName}</span>
+                <span class="date-num">${dayNum}</span>
+            `;
+            dateItem.onclick = () => selectDate(dateStr);
+            datePicker.appendChild(dateItem);
+        } else {
+            const dateItem = existingItems[i];
+            dateItem.className = `date-item ${dateStr === selectedDate ? 'active' : ''}`;
+            dateItem.querySelector('.date-day').innerText = dayName;
+            dateItem.querySelector('.date-num').innerText = dayNum;
+            dateItem.onclick = () => selectDate(dateStr);
+        }
     }
 }
 
@@ -198,23 +209,31 @@ function switchScreen(screen) {
         tabs[0].classList.add('active');
         screenStats.classList.add('active');
         
-        // Re-trigger animations
-        generateGrid(true);
-        renderVolumeChart();
-        updateQuickStats();
+        // Defer Rendering for ultra-smooth CSS transitions
+        requestAnimationFrame(() => {
+            if (statsDirty) {
+                generateGrid(true);
+                renderVolumeChart();
+                updateQuickStats();
+                statsDirty = false;
+            }
+            scrollToToday();
+        });
     } else if (screen === 'workout') {
         tabs[1].classList.add('active');
         screenWorkout.classList.add('active');
         
-        // Re-trigger animations
-        renderDatePicker(true);
-        renderExercises();
+        requestAnimationFrame(() => {
+            renderDatePicker(true);
+            renderExercises(true);
+        });
     } else if (screen === 'templates') {
         tabs[2].classList.add('active');
         screenTemplates.classList.add('active');
         
-        // Re-trigger animations
-        renderTemplates();
+        requestAnimationFrame(() => {
+            renderTemplates();
+        });
     }
 }
 
@@ -570,26 +589,67 @@ function updateExerciseDOM(id) {
     }
 }
 
-function renderExercises() {
-    exerciseList.innerHTML = '';
+function renderExercises(isFocus = false) {
     const workout = exerciseHistory[selectedDate] || [];
+    const container = exerciseList;
     
     if (workout.length === 0) {
-        exerciseList.innerHTML = `<li style="text-align:center; padding: 2rem; color: var(--text-light); opacity: 0.5;">No exercises for this day</li>`;
+        container.innerHTML = `
+            <li class="exercise-item ghost-item">
+                <div class="exercise-content" style="opacity: 0.5; justify-content: center; border: 2px dashed var(--text-light); box-shadow: none;">
+                    <span style="font-size: 0.85rem; font-weight: 700;">No exercises. Add one below!</span>
+                </div>
+            </li>
+        `;
         checkAllDone();
         return;
     }
 
+    // Remove any non-exercise items (like the "No exercises" message)
+    if (container.querySelector('li:not([id^="exercise-"])')) {
+        container.innerHTML = '';
+    }
+
+    const currentIds = workout.map(ex => `exercise-${ex.id}`);
+    
+    // Remove items that are no longer in the list
+    Array.from(container.children).forEach(child => {
+        if (child.id && !currentIds.includes(child.id)) {
+            child.remove();
+        }
+    });
+
+    // Reset animations in one pass to avoid layout thrashing
+    if (isFocus || lastAddedId) {
+        workout.forEach(ex => {
+            const li = document.getElementById(`exercise-${ex.id}`);
+            if (li) li.style.animation = 'none';
+        });
+        void container.offsetHeight; // Force single reflow
+    }
+
     workout.forEach((ex, index) => {
-        const li = document.createElement('li');
-        li.id = `exercise-${ex.id}`;
+        const id = `exercise-${ex.id}`;
+        let li = document.getElementById(id);
         const isNew = ex.id === lastAddedId;
+
+        if (!li) {
+            li = document.createElement('li');
+            li.id = id;
+            container.appendChild(li);
+        }
+        
+        // Apply animations
+        if (isFocus || isNew) {
+            li.style.animation = '';
+            li.style.animationDelay = isNew ? '0s' : `${index * 0.05}s`;
+        } else if (!lastAddedId) {
+            li.style.animationDelay = `${index * 0.05}s`;
+        }
+        
         li.className = `exercise-item ${ex.completed ? 'done-state' : ''} ${isNew ? 'new-item' : ''}`;
         
-        // Add staggered animation delay
-        li.style.animationDelay = `${index * 0.05}s`;
-        
-        li.innerHTML = `
+        const contentHtml = `
             <div class="swipe-bg swipe-bg-complete"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg></div>
             <div class="swipe-bg swipe-bg-delete"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"></path></svg></div>
             <div class="exercise-content">
@@ -599,8 +659,17 @@ function renderExercises() {
                 </div>
             </div>
         `;
-        exerciseList.appendChild(li);
+        
+        if (li.innerHTML !== contentHtml) {
+            li.innerHTML = contentHtml;
+        }
+
+        // Maintain order
+        if (container.children[index] !== li) {
+            container.insertBefore(li, container.children[index]);
+        }
     });
+
     lastAddedId = null; 
     checkAllDone();
 }
@@ -815,16 +884,21 @@ function checkAllDone() {
 
 function renderVolumeChart() {
     const container = document.getElementById('volume-chart');
+    const tooltipArea = document.getElementById('chart-tooltip-area');
     if (!container) return;
-    
+
     const last7Days = [];
     for (let i = 6; i >= 0; i--) {
         const d = new Date(); d.setDate(d.getDate() - i);
         const dateStr = getDateString(d);
-        last7Days.push({ date: dateStr, label: d.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0), volume: activity[dateStr] || 0 });
+        last7Days.push({ 
+            date: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), 
+            label: d.toLocaleDateString('en-US', { weekday: 'short' }).charAt(0), 
+            volume: activity[dateStr] || 0 
+        });
     }
     const maxVolume = Math.max(...last7Days.map(d => d.volume), 100);
-    
+
     const existingBars = container.querySelectorAll('.chart-bar-wrapper');
     const needsCreation = existingBars.length === 0;
 
@@ -844,25 +918,58 @@ function renderVolumeChart() {
             bar = existingBars[i].querySelector('.chart-bar');
         }
 
-        bar.title = `${day.date}: ${day.volume} reps`;
+        // Add interactive tap behavior
+        bar.onclick = (e) => {
+            // Remove active class from all other bars
+            container.querySelectorAll('.chart-bar').forEach(b => b.classList.remove('active'));
+            bar.classList.add('active');
+
+            // Update tooltip area
+            tooltipArea.innerHTML = `
+                <div class="tooltip-data">
+                    <span class="tooltip-date">${day.date}</span>
+                    <span class="tooltip-volume">${day.volume.toLocaleString()} <small>Reps</small></span>
+                </div>
+            `;
+            playTactileClick('soft');
+        };
+
         bar.style.height = `${Math.max(heightPercent, 5)}%`;
     });
 }
-
 function generateGrid(isInitial = false) {
     const now = new Date();
     const startDate = new Date(now.getFullYear(), 0, 1);
     startDate.setDate(startDate.getDate() - startDate.getDay());
     const tempDate = new Date(startDate);
-    
-    // Check if grid already has cells
+
+    const monthLabels = document.getElementById('month-labels');
     const existingCells = streakGrid.querySelectorAll('.cell');
     const needsCreation = existingCells.length === 0;
+
+    if (needsCreation) monthLabels.innerHTML = '';
+
+    let currentMonth = -1;
 
     for (let i = 0; i < 371; i++) {
         const dateStr = getDateString(tempDate);
         const count = activity[dateStr] || 0;
-        
+        const month = tempDate.getMonth();
+
+        // Add Month Label if it's the start of a month
+        if (month !== currentMonth) {
+            currentMonth = month;
+            // Only add labels for the current year to avoid overlap with previous year's "Dec"
+            if (needsCreation && tempDate.getFullYear() === now.getFullYear()) {
+                const colIndex = Math.floor(i / 7);
+                const label = document.createElement('span');
+                label.className = 'month-label';
+                label.innerText = tempDate.toLocaleDateString('en-US', { month: 'short' });
+                label.style.left = `${colIndex * 18}px`; // 14px cell + 4px gap
+                monthLabels.appendChild(label);
+            }
+        }
+
         if (needsCreation) {
             const cell = document.createElement('div');
             cell.className = 'cell ' + getLevelClass(count);
@@ -876,7 +983,6 @@ function generateGrid(isInitial = false) {
         tempDate.setDate(tempDate.getDate() + 1);
     }
 }
-
 function getLevelClass(count) {
     if (count === 0) return 'level-0';
     if (count < 20) return 'level-1';

@@ -1,8 +1,8 @@
 :root {
     interpolate-size: allow-keywords;
     --bg-color: #e0e5ec;
-    --text-color: #4a5568;
-    --text-light: #718096;
+    --text-color: #2D3748; /* Darkened from #4a5568 */
+    --text-light: #4A5568; /* Darkened from #718096 */
     --primary-color: #6c5ce7;
     --primary-light: #a29bfe;
     --danger-color: #ff7675;
@@ -22,15 +22,15 @@
     --spring: cubic-bezier(0.175, 0.885, 0.32, 1.5);
     --spring-soft: cubic-bezier(0.34, 1.8, 0.64, 1);
     
-    /* Slower, relaxing speed */
-    --speed-base: 1.2s;
-    --speed-fast: 0.6s;
+    /* Snappier speed */
+    --speed-base: 0.8s;
+    --speed-fast: 0.4s;
 }
 
 [data-theme="alpine-sage"] {
     --bg-color: #E4DDD3;
-    --text-color: #424642;
-    --text-light: #6a6a6a;
+    --text-color: #313331; /* Darkened from #424642 */
+    --text-light: #454A4D; /* Darkened from #6a6a6a */
     --primary-color: #00A19B;
     --primary-light: #4DBBB7;
     --neu-shadow-dark: rgba(180, 172, 160, 0.6);
@@ -42,7 +42,7 @@
 [data-theme="espresso"] {
     --bg-color: #2E1F26;
     --text-color: #E4DDD3;
-    --text-light: #9a8a8a;
+    --text-light: #B7A9A9; /* Lightened from #9a8a8a */
     --primary-color: #C87740;
     --primary-light: #D59266;
     --neu-shadow-dark: rgba(0, 0, 0, 0.5);
@@ -53,8 +53,8 @@
 
 [data-theme="cobalt"] {
     --bg-color: #EDF1F5;
-    --text-color: #2D3436;
-    --text-light: #636E72;
+    --text-color: #1A1D1E; /* Darkened from #2D3436 */
+    --text-light: #4A5458; /* Darkened from #636E72 */
     --primary-color: #0145F2;
     --primary-light: #4E7BFF;
     --neu-shadow-dark: rgba(200, 210, 220, 0.6);
@@ -65,8 +65,8 @@
 
 [data-theme="midnight"] {
     --bg-color: #1F2140;
-    --text-color: #E2E8F0;
-    --text-light: #94A3B8;
+    --text-color: #FFFFFF; /* Lightened from #E2E8F0 */
+    --text-light: #CBD5E1; /* Lightened from #94A3B8 */
     --primary-color: #7C83FF;
     --primary-light: #A5A9FF;
     --neu-shadow-dark: rgba(0, 0, 0, 0.5);
@@ -77,8 +77,8 @@
 
 [data-theme="dark"] {
     --bg-color: #1a202c;
-    --text-color: #e2e8f0;
-    --text-light: #a0aec0;
+    --text-color: #f7fafc; /* Lightened from #e2e8f0 */
+    --text-light: #CBD5E1; /* Lightened from #a0aec0 */
     --primary-color: #a29bfe;
     --primary-light: #6c5ce7;
     --danger-color: #fab1a0;
@@ -161,6 +161,30 @@ body {
     transform: scale(1);
     z-index: 2;
 }
+
+/* Optimized Content Transitions (Organized & Lightweight) */
+.screen .neu-card, .screen .stats-grid {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+    transition: opacity 0.3s ease, transform 0.4s ease;
+    will-change: transform, opacity;
+}
+
+.screen.active .neu-card, .screen.active .stats-grid {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    transition: opacity 0.6s ease, transform 0.8s var(--spring);
+}
+
+/* Staggered Delays for Smooth Entrance */
+#screen-stats.active .stats-grid { transition-delay: 0.1s; }
+#screen-stats.active #grid-section { transition-delay: 0.2s; }
+#screen-stats.active #chart-section { transition-delay: 0.3s; }
+
+#screen-workout.active #add-exercise-section { transition-delay: 0.1s; }
+#screen-workout.active #list-section { transition-delay: 0.2s; }
+
+#screen-templates.active .neu-card { transition-delay: 0.15s; }
 
 /* Standardized Gesture Items (Exercises & Templates) */
 .exercise-item, .template-item {
@@ -387,17 +411,6 @@ body {
     flex-shrink: 0;
 }
 
-.date-item.pop-animate {
-    animation: popIn var(--speed-base) var(--spring-soft) backwards;
-}
-
-.date-item.pop-animate:nth-child(1) { animation-delay: 0.1s; }
-.date-item.pop-animate:nth-child(2) { animation-delay: 0.15s; }
-.date-item.pop-animate:nth-child(3) { animation-delay: 0.2s; }
-.date-item.pop-animate:nth-child(4) { animation-delay: 0.25s; }
-.date-item.pop-animate:nth-child(5) { animation-delay: 0.3s; }
-.date-item.pop-animate:nth-child(n+6) { animation-delay: 0.35s; }
-
 .date-item:active {
     transform: scale(0.82);
     box-shadow: var(--btn-active);
@@ -429,16 +442,10 @@ body {
     margin-bottom: 1.2rem;
 }
 
-.screen.active .stat-card {
+.stat-card {
     padding: 0.8rem;
     text-align: center;
-    animation: popIn var(--speed-base) var(--spring-soft) backwards;
 }
-
-.screen.active .stat-card:nth-child(1) { animation-delay: 0.1s; }
-.screen.active .stat-card:nth-child(2) { animation-delay: 0.2s; }
-.screen.active .stat-card:nth-child(3) { animation-delay: 0.3s; }
-.screen.active .stat-card:nth-child(4) { animation-delay: 0.4s; }
 
 .stat-value {
     display: block;
@@ -640,30 +647,6 @@ header {
     flex-grow: 1;
 }
 
-.screen.active #grid-section {
-    animation: slideUpFade var(--speed-base) var(--spring-soft) backwards;
-    animation-delay: 0.3s;
-}
-
-.screen.active #chart-section {
-    animation: slideUpFade var(--speed-base) var(--spring-soft) backwards;
-    animation-delay: 0.4s;
-}
-
-.screen.active #add-exercise-section {
-    animation: slideUpFade var(--speed-base) var(--spring-soft) backwards;
-    animation-delay: 0.5s;
-    transition: all 0.8s var(--spring);
-    overflow: hidden;
-}
-
-.screen.active #list-section {
-    animation: slideUpFade var(--speed-base) var(--spring-soft) backwards;
-    animation-delay: 0.7s;
-    
-    transition: all 0.5s var(--spring);
-}
-
 .neu-text {
     font-weight: 800;
     font-size: 2rem;
@@ -686,19 +669,61 @@ h2.section-title {
     margin-bottom: 1.2rem;
     transition: all 0.8s var(--spring);
 }
-
 /* Activity Grid Styles */
 #grid-wrapper {
     overflow-x: auto;
-    padding: 20px 5px;
+    padding: 10px 5px;
     margin-bottom: 10px;
     scroll-behavior: smooth;
     -ms-overflow-style: none;
     scrollbar-width: none;
 }
 
-#grid-wrapper::-webkit-scrollbar {
-    display: none;
+.grid-container {
+    display: flex;
+    flex-direction: column;
+    min-width: max-content;
+}
+
+.month-labels {
+    display: flex;
+    margin-left: 35px; /* Offset for day labels */
+    margin-bottom: 8px;
+    font-size: 0.65rem;
+    font-weight: 800;
+    color: var(--text-light);
+    text-transform: uppercase;
+    height: 14px;
+    position: relative;
+}
+
+.month-label {
+    position: absolute;
+    transform: translateX(-50%);
+}
+
+.grid-body {
+    display: flex;
+    gap: 8px;
+}
+
+.day-labels {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 14px 0; /* Align with cells */
+    font-size: 0.6rem;
+    font-weight: 800;
+    color: var(--text-light);
+    text-transform: uppercase;
+    width: 25px;
+    opacity: 0.8;
+}
+
+.day-labels span {
+    height: 14px;
+    display: flex;
+    align-items: center;
 }
 
 .grid {
@@ -706,7 +731,7 @@ h2.section-title {
     grid-template-rows: repeat(7, 14px);
     grid-auto-flow: column;
     grid-auto-columns: 14px;
-    gap: 7px;
+    gap: 4px;
     width: max-content;
 }
 
@@ -758,25 +783,55 @@ h2.section-title {
 
 .neu-input-wrapper {
     width: 100%;
+    position: relative;
+    background-color: var(--bg-color);
+    border-radius: 15px;
+    box-shadow: var(--inner-shadow);
+    margin-bottom: 1.2rem;
+    transition: all 0.4s var(--spring);
+}
+
+.has-floating-label label {
+    position: absolute;
+    top: 50%;
+    left: 20px;
+    transform: translateY(-50%);
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-light);
+    pointer-events: none;
+    transition: all 0.3s var(--spring);
+    opacity: 0.7;
+}
+
+.has-floating-label input:focus ~ label,
+.has-floating-label input:not(:placeholder-shown) ~ label {
+    top: 12px;
+    font-size: 0.65rem;
+    transform: translateY(0);
+    opacity: 1;
+    color: var(--primary-color);
 }
 
 input {
-    background-color: var(--bg-color);
+    background-color: transparent;
     border: none;
     outline: none;
-    padding: 15px 20px;
-    border-radius: 12px;
+    padding: 24px 20px 10px 20px;
+    border-radius: 15px;
     width: 100%;
     font-size: 1rem;
     font-family: inherit;
     color: var(--text-color);
-    box-shadow: var(--inner-shadow);
-    transition: box-shadow 0.5s var(--spring), transform 0.5s var(--spring);
+    transition: all 0.4s var(--spring);
+}
+
+.neu-input-wrapper:focus-within {
+    transform: scale(0.98);
 }
 
 input:focus {
-    box-shadow: inset 8px 8px 12px 0 var(--neu-inset-dark), inset -8px -8px 12px 0 var(--neu-inset-light);
-    transform: scale(0.97);
+    /* Focus state handled by wrapper if needed, but keeping it clean */
 }
 
 .input-row {
@@ -818,6 +873,16 @@ input:focus {
     transition: box-shadow 0.5s var(--spring), transform 0.5s var(--spring);
 }
 
+@keyframes slideUpFade {
+    0% { opacity: 0; transform: translateY(30px) scale(0.9); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes statPop {
+    0% { opacity: 0; transform: translateY(20px); }
+    100% { opacity: 1; transform: translateY(0); }
+}
+
 @keyframes popIn {
     0% { opacity: 0; transform: scale(0.4) translateY(30px); }
     100% { opacity: 1; transform: scale(1) translateY(0); }
@@ -843,8 +908,26 @@ input:focus {
 }
 
 .exercise-item.new-item {
-    animation: popIn 0.8s var(--spring-soft) forwards;
-    /* Optional: slightly different feel for newly added vs initial load */
+    animation: popIn 0.8s var(--spring-soft) forwards, peekSwipe 1s var(--spring) 1s;
+    /* Peek triggers after 1s delay (when popIn finishes) */
+}
+
+.exercise-item.ghost-item {
+    animation: peekSwipeContinuous 3s var(--spring) infinite;
+}
+
+@keyframes peekSwipeContinuous {
+    0%, 100% { transform: translateX(0); }
+    15% { transform: translateX(-30px); }
+    30% { transform: translateX(15px); }
+    45% { transform: translateX(0); }
+}
+
+@keyframes peekSwipe {
+    0% { transform: translateX(0); }
+    30% { transform: translateX(-25px); }
+    60% { transform: translateX(10px); }
+    100% { transform: translateX(0); }
 }
 
 .exercise-item.removing {
@@ -1042,6 +1125,48 @@ input:focus {
     align-items: flex-end;
     justify-content: space-around;
     padding-top: 20px;
+    margin-bottom: 1rem;
+}
+
+.chart-tooltip-area {
+    min-height: 50px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 15px;
+    background-color: var(--bg-color);
+    box-shadow: var(--inner-shadow);
+    padding: 12px 20px;
+    margin-top: 0.5rem;
+    transition: all 0.3s var(--spring);
+}
+
+.tooltip-hint {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-light);
+    opacity: 0.6;
+}
+
+.tooltip-data {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    align-items: center;
+    animation: popIn 0.4s var(--spring) forwards;
+}
+
+.tooltip-date {
+    font-size: 0.85rem;
+    font-weight: 800;
+    color: var(--text-light);
+    text-transform: uppercase;
+}
+
+.tooltip-volume {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--primary-color);
 }
 
 .chart-bar-wrapper {
@@ -1057,10 +1182,18 @@ input:focus {
 .chart-bar {
     width: 60%;
     max-width: 30px;
-    background-color: var(--primary-color);
-    border-radius: 8px 8px 4px 4px;
+    background-color: var(--primary-light);
+    border-radius: 10px 10px 5px 5px;
     box-shadow: var(--btn-shadow);
     min-height: 4px;
+    transition: all 0.4s var(--spring);
+    cursor: pointer;
+}
+
+.chart-bar.active {
+    background-color: var(--primary-color);
+    box-shadow: inset 2px 2px 5px rgba(0,0,0,0.2);
+    transform: scaleX(1.1);
 }
 
 .chart-label {
