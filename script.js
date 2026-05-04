@@ -212,6 +212,10 @@ function switchScreen(screen) {
     playTactileClick('soft');
 
     if (screen === 'stats') {
+        tabs[0].classList.add('active');
+        screenStats.classList.add('active');
+        
+        // Defer Rendering for ultra-smooth CSS transitions
         requestAnimationFrame(() => {
             if (statsDirty) {
                 generateGrid(true);
@@ -222,11 +226,17 @@ function switchScreen(screen) {
             scrollToToday();
         });
     } else if (screen === 'workout') {
+        tabs[1].classList.add('active');
+        screenWorkout.classList.add('active');
+        
         requestAnimationFrame(() => {
             renderDatePicker(true);
             renderExercises(true);
         });
     } else if (screen === 'templates') {
+        tabs[2].classList.add('active');
+        screenTemplates.classList.add('active');
+        
         requestAnimationFrame(() => {
             renderTemplates();
         });
@@ -612,6 +622,7 @@ function renderExercises(isFocus = false) {
                 </div>
             </li>
         `;
+        container.innerHTML = `<li style="text-align:center; padding: 2rem; color: var(--text-light); opacity: 0.5;">No exercises for this day</li>`;
         checkAllDone();
         return;
     }
@@ -649,6 +660,17 @@ function renderExercises(isFocus = false) {
             li.id = id;
             container.appendChild(li);
         }
+        
+        // Apply animations
+        if (isFocus || isNew) {
+            li.style.animation = '';
+            li.style.animationDelay = isNew ? '0s' : `${index * 0.05}s`;
+        } else if (!lastAddedId) {
+            li.style.animationDelay = `${index * 0.05}s`;
+        }
+        
+        li.className = `exercise-item ${ex.completed ? 'done-state' : ''} ${isNew ? 'new-item' : ''}`;
+        
         
         // Apply animations
         if (isFocus || isNew) {

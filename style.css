@@ -28,6 +28,9 @@
     /* Slightly relaxed speed to accommodate high bounce */
     --speed-base: 0.5s;
     --speed-fast: 0.25s;
+    /* Snappier speed */
+    --speed-base: 0.8s;
+    --speed-fast: 0.4s;
 }
 
 [data-theme="alpine-sage"] {
@@ -215,6 +218,20 @@ body {
     background-color: var(--surface-variant);
     border-radius: 100px;
     margin: 0 auto 15px auto;
+}
+
+/* Optimized Content Transitions (Organized & Lightweight) */
+.screen .neu-card, .screen .stats-grid {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+    transition: opacity 0.3s ease, transform 0.4s ease;
+    will-change: transform, opacity;
+}
+
+.screen.active .neu-card, .screen.active .stats-grid {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    transition: opacity 0.6s ease, transform 0.8s var(--spring);
 }
 
 /* Optimized Content Transitions (Organized & Lightweight) */
