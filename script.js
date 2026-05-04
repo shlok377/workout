@@ -254,14 +254,21 @@ function initGlobalGestures() {
     const threshold = 60;
     const pullThreshold = 70;
 
+    let ignoreGesture = false;
+
     document.addEventListener('touchstart', (e) => {
         startX = e.touches[0].clientX;
         startY = e.touches[0].clientY;
         isHorizontal = false;
         isPullDown = false;
+        
+        // Prevent screen swipe if starting on elements with internal horizontal gestures
+        ignoreGesture = !!e.target.closest('.exercise-item, .template-item, .date-picker, #grid-wrapper');
     }, { passive: true });
 
     document.addEventListener('touchmove', (e) => {
+        if (ignoreGesture) return;
+        
         const deltaX = e.touches[0].clientX - startX;
         const deltaY = e.touches[0].clientY - startY;
 
@@ -275,6 +282,11 @@ function initGlobalGestures() {
     }, { passive: true });
 
     document.addEventListener('touchend', (e) => {
+        if (ignoreGesture) {
+            ignoreGesture = false;
+            return;
+        }
+
         const deltaX = e.changedTouches[0].clientX - startX;
         const deltaY = e.changedTouches[0].clientY - startY;
         const currentIndex = screensList.indexOf(currentScreen);
