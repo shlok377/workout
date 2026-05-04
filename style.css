@@ -10,18 +10,24 @@
     --on-primary: #FFFFFF;
     --danger-color: #B3261E;
     
-    --card-shadow: none;
-    --inner-shadow: none;
-    --btn-shadow: none;
-    --btn-active: none;
+    --neu-shadow-dark: #D1CCD6;
+    --neu-shadow-light: #FFFFFF;
+    --neu-inset-dark: #D1CCD6;
+    --neu-inset-light: #FFFFFF;
+    --border-color: rgba(0, 0, 0, 0.08);
+
+    --card-shadow: 6px 6px 12px var(--neu-shadow-dark), -6px -6px 12px var(--neu-shadow-light);
+    --inner-shadow: inset 4px 4px 8px var(--neu-inset-dark), inset -4px -4px 8px var(--neu-inset-light);
+    --btn-shadow: 4px 4px 8px var(--neu-shadow-dark), -4px -4px 8px var(--neu-shadow-light);
+    --btn-active: inset 3px 3px 6px var(--neu-inset-dark), inset -3px -3px 6px var(--neu-inset-light);
     
-    /* Material 3 Emphasized Decelerate Physics */
-    --spring: cubic-bezier(0.2, 0, 0, 1);
-    --spring-soft: cubic-bezier(0.4, 0, 0.2, 1);
+    /* Highly Elastic Bouncy Physics */
+    --spring: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    --spring-soft: cubic-bezier(0.34, 1.56, 0.64, 1);
     
-    /* Snappier speed for Fluid Gestures */
-    --speed-base: 0.4s;
-    --speed-fast: 0.2s;
+    /* Slightly relaxed speed to accommodate high bounce */
+    --speed-base: 0.5s;
+    --speed-fast: 0.25s;
 }
 
 [data-theme="alpine-sage"] {
@@ -33,6 +39,11 @@
     --primary-color: #006A64;
     --primary-light: #71F7EC;
     --on-primary: #FFFFFF;
+    --neu-shadow-dark: #C9D6CE;
+    --neu-shadow-light: #FFFFFF;
+    --neu-inset-dark: #C9D6CE;
+    --neu-inset-light: #FFFFFF;
+    --border-color: rgba(0, 106, 100, 0.1);
 }
 
 [data-theme="espresso"] {
@@ -44,6 +55,11 @@
     --primary-color: #FFB48A;
     --primary-light: #613C24;
     --on-primary: #4F2500;
+    --neu-shadow-dark: #120E0D;
+    --neu-shadow-light: #3D322E;
+    --neu-inset-dark: #120E0D;
+    --neu-inset-light: #3D322E;
+    --border-color: rgba(255, 180, 138, 0.15);
 }
 
 [data-theme="cobalt"] {
@@ -55,6 +71,11 @@
     --primary-color: #0060AA;
     --primary-light: #D3E4FF;
     --on-primary: #FFFFFF;
+    --neu-shadow-dark: #C9D1E0;
+    --neu-shadow-light: #FFFFFF;
+    --neu-inset-dark: #C9D1E0;
+    --neu-inset-light: #FFFFFF;
+    --border-color: rgba(0, 96, 170, 0.1);
 }
 
 [data-theme="midnight"] {
@@ -66,6 +87,11 @@
     --primary-color: #B4C5FF;
     --primary-light: #2A448B;
     --on-primary: #192E6D;
+    --neu-shadow-dark: #0F0F12;
+    --neu-shadow-light: #2D2F38;
+    --neu-inset-dark: #0F0F12;
+    --neu-inset-light: #2D2F38;
+    --border-color: rgba(180, 197, 255, 0.15);
 }
 
 [data-theme="dark"] {
@@ -78,6 +104,11 @@
     --primary-light: #4a4185;
     --on-primary: #1a202c;
     --danger-color: #fab1a0;
+    --neu-shadow-dark: #0f131a;
+    --neu-shadow-light: #3a475d;
+    --neu-inset-dark: #0f131a;
+    --neu-inset-light: #3a475d;
+    --border-color: rgba(162, 155, 254, 0.15);
 }
 
 * {
@@ -229,8 +260,9 @@ body {
     align-items: center;
     position: relative;
     z-index: 2;
-    box-shadow: none;
-    transition: transform 0.4s var(--spring), background-color 0.4s ease;
+    box-shadow: var(--card-shadow);
+    border: 1px solid var(--border-color);
+    transition: transform 0.4s var(--spring), background-color 0.4s ease, box-shadow 0.4s var(--spring);
     user-select: none;
     width: 100%;
 }
@@ -238,6 +270,8 @@ body {
 .done-state .exercise-content {
     background-color: var(--primary-light);
     color: var(--on-primary);
+    box-shadow: var(--inner-shadow);
+    border-color: var(--primary-color);
 }
 
 .done-state .exercise-info span {
@@ -435,6 +469,7 @@ body {
     border-radius: 18px;
     background-color: var(--bg-color);
     box-shadow: var(--btn-shadow);
+    border: 1px solid var(--border-color);
     cursor: pointer;
     transition: all 0.5s var(--spring);
     flex-shrink: 0;
@@ -448,6 +483,7 @@ body {
 .date-item.active {
     box-shadow: var(--btn-active);
     color: var(--primary-color);
+    border-color: var(--primary-color);
     transform: scale(0.95);
 }
 
@@ -500,16 +536,16 @@ body {
     background-color: var(--surface-color);
     padding: 8px 16px;
     border-radius: 100px; /* Pill badge */
-    box-shadow: none;
+    box-shadow: var(--btn-shadow);
+    border: 1px solid var(--border-color);
     cursor: pointer;
     transition: all 0.3s var(--spring);
     min-width: 90px;
-    border: 1px solid rgba(0,0,0,0.05);
 }
 
 .weekly-badge:active {
     transform: scale(0.92);
-    background-color: var(--surface-variant);
+    box-shadow: var(--btn-active);
 }
 
 #weekly-progress-text {
@@ -584,8 +620,8 @@ header {
     align-items: center;
     justify-content: center;
     background-color: var(--surface-color);
-    box-shadow: none;
-    border: none;
+    box-shadow: var(--btn-shadow);
+    border: 1px solid var(--border-color);
     cursor: pointer;
     transition: all 0.3s var(--spring);
     color: var(--primary-color);
@@ -593,7 +629,7 @@ header {
 
 .theme-toggle-btn:active {
     transform: scale(0.9);
-    background-color: var(--surface-variant);
+    box-shadow: var(--btn-active);
 }
 
 .theme-toggle-wrapper {
@@ -687,7 +723,8 @@ h2.section-title {
     background-color: var(--surface-color);
     border-radius: 28px;
     padding: 1.5rem;
-    box-shadow: none;
+    box-shadow: var(--card-shadow);
+    border: 1px solid var(--border-color);
     margin-bottom: 1.2rem;
     transition: all 0.4s var(--spring);
 }
@@ -808,7 +845,8 @@ h2.section-title {
     position: relative;
     background-color: var(--surface-color);
     border-radius: 20px;
-    box-shadow: none;
+    box-shadow: var(--inner-shadow);
+    border: 1px solid var(--border-color);
     margin-bottom: 1.2rem;
     transition: all 0.4s var(--spring);
 }
@@ -854,7 +892,7 @@ input {
 }
 
 .neu-btn {
-    border: none;
+    border: 1px solid var(--border-color);
     outline: none;
     padding: 16px 24px;
     border-radius: 100px;
@@ -863,12 +901,16 @@ input {
     cursor: pointer;
     font-family: inherit;
     transition: all 0.3s var(--spring);
-    box-shadow: none;
+    box-shadow: var(--btn-shadow);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 }
 
 .neu-btn:active {
     transform: scale(0.94);
-    opacity: 0.8;
+    box-shadow: var(--btn-active);
 }
 
 .neu-btn.primary {
